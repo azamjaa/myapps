@@ -1,0 +1,30 @@
+# Ignore mybooking folder
+mybooking/
+
+# Ignore test/debug files
+*.sql
+test-*.php
+debug-*.sql
+check-*.sql
+fix-*.sql
+
+# Laravel specific
+.env
+node_modules/
+vendor/
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+bootstrap/cache/*
+public/hot
+public/storage
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
