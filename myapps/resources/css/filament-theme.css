@@ -1,0 +1,236 @@
+/* KEDA Corporate Theme - Navy Blue & Gold */
+
+:root {
+    --keda-navy: #1e3a8a;
+    --keda-gold: #fbbf24;
+    --keda-navy-light: #3b82f6;
+    --keda-navy-dark: #1e40af;
+}
+
+/* Override Filament primary colors */
+.fi-primary {
+    --primary-50: 240, 249, 255;
+    --primary-100: 224, 242, 254;
+    --primary-200: 186, 230, 253;
+    --primary-300: 125, 211, 252;
+    --primary-400: 56, 189, 248;
+    --primary-500: 14, 165, 233;
+    --primary-600: 2, 132, 199;
+    --primary-700: 3, 105, 161;
+    --primary-800: 7, 89, 133;
+    --primary-900: 30, 58, 138;
+    --primary-950: 12, 74, 110;
+}
+
+/* Sidebar styling */
+.fi-sidebar-nav {
+    background: linear-gradient(180deg, var(--keda-navy) 0%, var(--keda-navy-dark) 100%) !important;
+}
+
+/* Sidebar links */
+.fi-sidebar-item-button {
+    transition: all 0.3s ease;
+}
+
+.fi-sidebar-item-button:hover {
+    background: rgba(251, 191, 36, 0.15) !important;
+    transform: translateX(5px);
+}
+
+.fi-sidebar-item-button.fi-active {
+    background: rgba(251, 191, 36, 0.25) !important;
+    border-left: 4px solid var(--keda-gold);
+}
+
+/* Topbar */
+.fi-topbar {
+    background: white !important;
+    border-bottom: 3px solid var(--keda-gold);
+}
+
+/* Cards */
+.fi-section {
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    transition: all 0.3s ease;
+}
+
+.fi-section:hover {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Buttons */
+.fi-btn-primary {
+    background: linear-gradient(135deg, var(--keda-navy) 0%, var(--keda-navy-light) 100%) !important;
+    transition: all 0.3s ease;
+}
+
+.fi-btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px rgba(30, 58, 138, 0.3);
+}
+
+/* Stats widgets */
+.fi-wi-stats-overview-stat {
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.fi-wi-stats-overview-stat:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Tables */
+.fi-ta-table {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.fi-ta-header-cell {
+    background: linear-gradient(135deg, var(--keda-navy) 0%, var(--keda-navy-light) 100%) !important;
+    color: white !important;
+    font-weight: 600;
+}
+
+.fi-ta-row:hover {
+    background: rgba(251, 191, 36, 0.05) !important;
+}
+
+/* Form inputs */
+.fi-input, .fi-select, .fi-textarea {
+    border-radius: 8px;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+.fi-input:focus, .fi-select:focus, .fi-textarea:focus {
+    border-color: var(--keda-navy);
+    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+/* Charts */
+.fi-wi-chart {
+    border-radius: 12px;
+    padding: 1.5rem;
+    background: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+/* Dashboard header customization */
+.fi-header-heading {
+    background: linear-gradient(90deg, var(--keda-navy), var(--keda-gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+}
+
+/* Badges */
+.fi-badge {
+    border-radius: 9999px;
+    font-weight: 600;
+}
+
+.fi-badge-success {
+    background: var(--keda-navy);
+    color: white;
+}
+
+/* Action buttons */
+.fi-ta-actions {
+    gap: 0.5rem;
+}
+
+.fi-ta-action-btn {
+    transition: all 0.2s ease;
+}
+
+.fi-ta-action-btn:hover {
+    transform: scale(1.1);
+}
+
+/* Loading spinner */
+.fi-loading-indicator {
+    border-color: var(--keda-gold);
+    border-top-color: var(--keda-navy);
+}
+
+/* Notification */
+.fi-notification {
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.fi-notification-success {
+    border-left: 4px solid var(--keda-gold);
+}
+
+/* Search input */
+.fi-global-search-field {
+    border-radius: 9999px;
+    border: 2px solid var(--keda-navy);
+}
+
+.fi-global-search-field:focus {
+    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+/* Tabs */
+.fi-tabs-item {
+    transition: all 0.3s ease;
+}
+
+.fi-tabs-item-active {
+    border-bottom: 3px solid var(--keda-gold);
+    color: var(--keda-navy);
+}
+
+/* Modal */
+.fi-modal-window {
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+
+/* Dropdown */
+.fi-dropdown-panel {
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--keda-navy) 0%, var(--keda-gold) 100%);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, var(--keda-navy-dark) 0%, var(--keda-gold) 100%);
+}
+
+/* Animation */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fi-section, .fi-wi-stats-overview-stat, .fi-wi-chart {
+    animation: fadeInUp 0.5s ease-out;
+}
+
