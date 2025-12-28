@@ -42,11 +42,22 @@ class AdminPanelProvider extends PanelProvider
                     600 => '2, 132, 199',
                     700 => '3, 105, 161',
                     800 => '7, 89, 133',
-                    900 => '30, 58, 138', // Navy Blue
+                    900 => '30, 58, 138', // Navy Blue - KEDA Primary
                     950 => '12, 74, 110',
                 ],
-                'warning' => Color::Amber, // Gold
+                'warning' => Color::Amber, // Gold - KEDA Secondary
+                'success' => Color::Emerald,
+                'danger' => Color::Red,
+                'info' => Color::Sky,
             ])
+            ->brandName('MyApps KEDA')
+            ->brandLogo(asset('images/keda-logo.png'))
+            ->brandLogoHeight('2.5rem')
+            ->favicon(asset('favicon.ico'))
+            ->maxContentWidth('full')
+            ->sidebarCollapsibleOnDesktop()
+            ->sidebarWidth('16rem')
+            ->spa()
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
