@@ -1,12 +1,15 @@
 # Ignore mybooking folder
 mybooking/
 
-# Ignore test/debug files
-*.sql
+# Ignore test/debug files (but keep update scripts)
 test-*.php
 debug-*.sql
 check-*.sql
 fix-*.sql
+insert-login-records.sql
+
+# Allow important SQL files
+!update-all-staf-password.sql
 
 # Laravel specific
 .env
