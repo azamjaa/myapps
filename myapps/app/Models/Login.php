@@ -19,6 +19,7 @@ class Login extends Model
     protected $fillable = [
         'id_staf',
         'password_hash',
+        'role',
         'otp_code',
         'otp_expiry',
         'reset_token',

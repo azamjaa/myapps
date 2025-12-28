@@ -177,6 +177,17 @@ class StafResource extends Resource
                         default => 'gray',
                     })
                     ->sortable(),
+                    
+                Tables\Columns\TextColumn::make('loginRecord.role')
+                    ->label('Role')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'admin' => 'warning',
+                        'user' => 'info',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state): string => strtoupper($state))
+                    ->sortable(),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('id_bahagian')

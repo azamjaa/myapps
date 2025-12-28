@@ -162,6 +162,22 @@ class Staf extends Authenticatable
         return $this->id_status == 1;
     }
 
+    /**
+     * Check if user is admin
+     */
+    public function isAdmin()
+    {
+        return $this->loginRecord && $this->loginRecord->role === 'admin';
+    }
+
+    /**
+     * Get user role
+     */
+    public function getRole()
+    {
+        return $this->loginRecord ? $this->loginRecord->role : 'user';
+    }
+
     // Birthday helper
     public function isBirthdayThisMonth()
     {
