@@ -6,17 +6,31 @@ use App\Models\Staf;
 use App\Models\Aplikasi;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Support\Facades\Cache;
 
 class StatsOverviewWidget extends BaseWidget
 {
     protected static ?int $sort = 0;
     
+    // Reduce polling to improve performance
+    protected static ?string $pollingInterval = '30s';
+    
     protected function getStats(): array
     {
-        $totalStaf = Staf::count();
-        $activeStaf = Staf::where('id_status', 1)->count();
-        $totalApps = Aplikasi::count();
-        $ssoApps = Aplikasi::where('sso_comply', 1)->count();
+        // Cache stats for 5 minutes to reduce database load
+        $stats = Cache::remember('dashboard_stats', 300, function () {
+            return [
+                'totalStaf' => Staf::count(),
+                'activeStaf' => Staf::where('id_status', 1)->count(),
+                'totalApps' => Aplikasi::count(),
+                'ssoApps' => Aplikasi::where('sso_comply', 1)->count(),
+            ];
+        });
+        
+        $totalStaf = $stats['totalStaf'];
+        $activeStaf = $stats['activeStaf'];
+        $totalApps = $stats['totalApps'];
+        $ssoApps = $stats['ssoApps'];
         
         // Calculate trends (mock data for demo - replace with real historical data)
         $activePercentage = $totalStaf > 0 ? round(($activeStaf / $totalStaf) * 100) : 0;

@@ -4,19 +4,26 @@ namespace App\Filament\Widgets;
 
 use App\Models\Aplikasi;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Cache;
 
 class AplikasiCategoryChart extends ChartWidget
 {
     protected static ?string $heading = 'Aplikasi Mengikut Kategori';
     protected static ?int $sort = 3;
+    
+    // Reduce polling to improve performance
+    protected static ?string $pollingInterval = '60s';
 
     protected function getData(): array
     {
-        $categoryCounts = Aplikasi::selectRaw('kategori.nama_kategori, COUNT(*) as count')
-            ->join('kategori', 'aplikasi.id_kategori', '=', 'kategori.id_kategori')
-            ->groupBy('kategori.nama_kategori', 'kategori.id_kategori')
-            ->pluck('count', 'kategori.nama_kategori')
-            ->toArray();
+        // Cache chart data for 5 minutes
+        $categoryCounts = Cache::remember('aplikasi_category_chart', 300, function () {
+            return Aplikasi::selectRaw('kategori.nama_kategori, COUNT(*) as count')
+                ->join('kategori', 'aplikasi.id_kategori', '=', 'kategori.id_kategori')
+                ->groupBy('kategori.nama_kategori', 'kategori.id_kategori')
+                ->pluck('count', 'kategori.nama_kategori')
+                ->toArray();
+        });
 
         return [
             'datasets' => [

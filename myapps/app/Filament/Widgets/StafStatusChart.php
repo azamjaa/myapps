@@ -4,19 +4,26 @@ namespace App\Filament\Widgets;
 
 use App\Models\Staf;
 use Filament\Widgets\ChartWidget;
+use Illuminate\Support\Facades\Cache;
 
 class StafStatusChart extends ChartWidget
 {
     protected static ?string $heading = 'Pecahan Staf Mengikut Status';
     protected static ?int $sort = 2;
+    
+    // Reduce polling to improve performance
+    protected static ?string $pollingInterval = '60s';
 
     protected function getData(): array
     {
-        $statusCounts = Staf::selectRaw('status.status, COUNT(*) as count')
-            ->join('status', 'staf.id_status', '=', 'status.id_status')
-            ->groupBy('status.status', 'status.id_status')
-            ->pluck('count', 'status.status')
-            ->toArray();
+        // Cache chart data for 5 minutes
+        $statusCounts = Cache::remember('staf_status_chart', 300, function () {
+            return Staf::selectRaw('status.status, COUNT(*) as count')
+                ->join('status', 'staf.id_status', '=', 'status.id_status')
+                ->groupBy('status.status', 'status.id_status')
+                ->pluck('count', 'status.status')
+                ->toArray();
+        });
 
         return [
             'datasets' => [
