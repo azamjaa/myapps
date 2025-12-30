@@ -22,15 +22,19 @@ require_once 'db.php';
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MyApps KEDA">
     <title>MyApps KEDA</title>
     
     <link rel="icon" type="image/png" href="image/keda.png?v=<?php echo time(); ?>">
+    <link rel="apple-touch-icon" href="image/keda.png">
     
     <!-- PWA -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#1e293b">
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json?v=<?php echo time(); ?>">
 
     <!-- Bootstrap & FontAwesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -49,6 +53,21 @@ require_once 'db.php';
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
+        /* PWA & MOBILE VIEWPORT FIX */
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
         /* Force CSS Reload */
         body { background-color: #f3f4f6; overflow-x: hidden; }
 
@@ -88,9 +107,59 @@ require_once 'db.php';
 
         /* RESPONSIVE */
         @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); }
-            .main-content { margin-left: 0; width: 100%; }
+            .sidebar { 
+                transform: translateX(-100%); 
+                width: 100%;
+            }
+            .main-content { 
+                margin-left: 0 !important; 
+                width: 100% !important;
+                padding: 10px !important;
+            }
             .sidebar.active { transform: translateX(0); }
+            
+            /* MOBILE FIXES */
+            body { overflow-x: hidden; }
+            .container, .container-fluid { padding: 0 10px; }
+            
+            /* Card responsiveness */
+            .card { margin-bottom: 15px; }
+            
+            /* Table overflow */
+            .table-responsive { display: block; width: 100%; overflow-x: auto; }
+            
+            /* Chart responsive */
+            .chart-container { max-width: 100%; }
+            canvas { max-width: 100% !important; }
+            
+            /* Button groups */
+            .btn-group-vertical { width: 100%; }
+            .btn-group .btn { flex: 1; }
+            
+            /* Modal full width */
+            .modal-dialog { margin: 10px; }
+            .modal-content { border-radius: 10px; }
+            
+            /* Input responsiveness */
+            input, textarea, select { width: 100% !important; }
+            
+            /* Typography */
+            h1, h2, h3, h4, h5, h6 { font-size: 1rem !important; }
+            
+            /* Column responsive */
+            .col-md-3, .col-md-4, .col-md-6 { width: 100% !important; }
+            
+            /* Remove fixed widths */
+            [style*="width: 260px"] { width: 100% !important; }
+            [style*="width: calc"] { width: 100% !important; }
+        }
+        
+        /* Extra small devices */
+        @media (max-width: 480px) {
+            .main-content { padding: 5px !important; }
+            .sidebar { width: 90vw; }
+            .container-fluid { padding: 0 5px; }
+            .card-body { padding: 10px !important; }
         }
         
         /* UTILITY */
@@ -167,7 +236,57 @@ require_once 'db.php';
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-5px); }
         }
-        .chat-box { position: fixed; bottom: 110px; right: 30px; width: 380px; height: 500px; background: white; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 9998; display: none; flex-direction: column; }
+        /* Chat Box */
+        .chat-box { 
+            position: fixed; 
+            bottom: 110px; 
+            right: 30px; 
+            width: 380px; 
+            height: 500px; 
+            background: white; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+            z-index: 10001; 
+            display: none; 
+            flex-direction: column;
+            overflow: hidden;
+            max-height: 85vh;
+        }
+        @media (max-width: 600px) {
+            .chat-box {
+                width: 85vw !important;
+                right: 4vw !important;
+                left: auto !important;
+                min-width: 0 !important;
+                border-radius: 12px;
+            }
+        }
+        }
+        
+        /* Chat Header - Fixed */
+        .chat-box .p-3:first-child {
+            flex-shrink: 0;
+            min-height: auto;
+        }
+        
+        /* Chat Messages Area - Scrollable */
+        #chatBody {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 12px;
+            background-color: #f9f9f9;
+        }
+        
+        /* Chat Input Area - Fixed at bottom */
+        .chat-box .d-flex:last-of-type {
+            flex-shrink: 0;
+            border-top: 1px solid #e0e0e0;
+            background-color: white;
+            padding: 10px !important;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -286,6 +405,7 @@ require_once 'db.php';
             <img src="image/mawar.png" class="w-100 h-100 rounded-circle border border-danger border-3 shadow bg-white" style="object-fit: cover;">
         </div>
     </div>
+        </script>
 </div>
 <div class="chat-box" id="chatBox">
     <div class="p-3 text-white d-flex align-items-center" style="background: linear-gradient(135deg, #dc3545, #c82333);">
@@ -297,14 +417,14 @@ require_once 'db.php';
         <button onclick="toggleChat()" class="btn-close btn-close-white ms-auto"></button>
     </div>
     <div class="flex-grow-1 p-3 bg-light overflow-auto" id="chatBody">
-        <div class="bg-white p-3 rounded shadow-sm mb-2 border-start border-danger border-4" style="max-width:85%;">
+        <div class="bg-white p-2 rounded shadow-sm mb-2 border-start border-danger border-4" style="max-width:85%; font-size: 13px;">
             <strong>Hai! Saya Mawar.</strong><br>
-            Ada apa-apa saya boleh bantu? 😊
+            <small>Ada apa saya boleh bantu? 😊</small>
         </div>
     </div>
-    <div class="p-3 bg-white border-top d-flex">
-        <input type="text" id="chatInput" class="form-control rounded-pill me-2" placeholder="Taip soalan di sini..." onkeypress="handleEnter(event)">
-        <button onclick="hantarMesej()" class="btn btn-danger rounded-circle" style="width: 40px; height: 40px;"><i class="fas fa-paper-plane"></i></button>
+    <div class="p-2 bg-white border-top d-flex gap-2" style="margin: 0;">
+        <input type="text" id="chatInput" class="form-control rounded-pill" placeholder="Taip soalan..." onkeypress="handleEnter(event)" style="font-size: 13px; padding: 8px 15px;">
+        <button onclick="hantarMesej()" class="btn btn-danger rounded-circle flex-shrink-0" style="width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 14px;"><i class="fas fa-paper-plane"></i></button>
     </div>
 </div>
 
@@ -355,4 +475,32 @@ function hantarMesej() {
         body.scrollTop = body.scrollHeight;
     });
 }
+
+// SERVICE WORKER AUTO-UPDATE
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('service-worker.js?v=' + Date.now()).then(function(registration) {
+            // Check for updates setiap 5 minit
+            setInterval(function() {
+                registration.update();
+            }, 5 * 60 * 1000); // 5 minutes
+        }).catch(function(err) {
+            console.log('ServiceWorker registration failed: ', err);
+        });
+    });
+    
+    // Unregister old service workers untuk force clear cache
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+        for(let registration of registrations) {
+            registration.unregister();
+        }
+    });
+}
+
+// AUTO-REFRESH page jika ada PWA update
+window.addEventListener('load', function() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.controller?.postMessage({type: 'SKIP_WAITING'});
+    }
+});
 </script>

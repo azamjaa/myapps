@@ -97,17 +97,17 @@ if (isset($_POST['mesej'])) {
     $ollama_url = 'http://localhost:11434/api/generate';
     $nama_user = htmlspecialchars($_SESSION['nama'] ?? 'Pengguna'); // Sanitize session data
 
-    // 3. ARAHAN WATAK (SYSTEM PROMPT) - TEGAS UNTUK BAHASA MELAYU
-    $system_instruction = "Anda adalah Melur, chatbot pembantu yang berbahasa Melayu. PENTING: SEMUA jawapan MESTI dalam Bahasa Melayu. Jangan jawab dalam English. Jawab dengan mesra, ringkas, dan jelas. Panggil pengguna sebagai '$nama_user'.";
+    // 3. ARAHAN WATAK (SYSTEM PROMPT) - BAHASA MELAYU SAHAJA
+    $system_instruction = "Anda adalah Mawar, chatbot pembantu MyApps KEDA. WAJIB: SEMUA jawapan MESTI dalam Bahasa Melayu (Malaysia). Jangan gunakan Bahasa Indonesia atau bahasa lain. Jawab dengan mesra, ringkas, dan jelas. Gunakan emoji jika sesuai. Panggil pengguna sebagai '$nama_user'.";
 
     // 4. BINA PAYLOAD UNTUK OLLAMA
-    $prompt = $system_instruction . "\n\nSoalan Pengguna: " . $mesej_user . "\n\nJawapan (dalam Bahasa Melayu):";
+    $prompt = $system_instruction . "\n\nSoalan dari pengguna: " . $mesej_user . "\n\nJawapan (MESTI dalam Bahasa Melayu Malaysia):";
     
     $data = [
-        "model" => "mistral",  // mistral lebih baik untuk Bahasa Melayu daripada llama2
+        "model" => "mistral",  // mistral lebih baik untuk Bahasa Melayu
         "prompt" => $prompt,
-        "stream" => false,     // Jangan stream, ambil response penuh
-        "temperature" => 0.5   // Lower temperature = lebih focus pada instruction
+        "stream" => false,
+        "temperature" => 0.3   // Lower temperature = lebih ketat pada instruction, kurang kreativ = lebih jelas
     ];
 
     // 5. SETTING cURL UNTUK OLLAMA

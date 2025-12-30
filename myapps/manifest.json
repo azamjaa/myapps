@@ -3,10 +3,11 @@
   "short_name": "KEDA",
   "description": "Sistem Direktori Aplikasi KEDA",
   "start_url": "/myapps/",
+  "scope": "/myapps/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#3b82f6",
-  "orientation": "portrait-primary",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "image/keda.png",

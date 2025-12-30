@@ -71,6 +71,72 @@ try {
     .fc-button-primary:hover { background-color: #b71c1c !important; }
     .fc-button-active { background-color: #a00000 !important; }
     .fc-col-header-cell.fc-day-sun { color: red; }
+    
+    /* MOBILE RESPONSIVE */
+    @media (max-width: 768px) {
+        .fc-toolbar {
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 5px;
+        }
+        
+        .fc-toolbar-chunk {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        .fc-button {
+            padding: 6px 10px !important;
+            font-size: 12px !important;
+            margin: 2px !important;
+        }
+        
+        .fc-button-group {
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+        }
+        
+        .fc {
+            font-size: 13px;
+        }
+        
+        .fc-daygrid-day-number {
+            padding: 4px 2px !important;
+            font-size: 12px;
+        }
+        
+        .fc-daygrid-day-frame {
+            min-height: 60px;
+        }
+        
+        .fc-col-header-cell {
+            padding: 4px 2px !important;
+            font-size: 11px;
+        }
+        
+        .fc-daygrid-day {
+            padding: 0 !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .fc-button {
+            padding: 4px 8px !important;
+            font-size: 11px !important;
+        }
+        
+        .fc-toolbar-title {
+            font-size: 16px !important;
+        }
+        
+        .fc-daygrid-day-frame {
+            min-height: 50px;
+        }
+    }
 </style>
 
 <div class="container-fluid">
@@ -135,13 +201,19 @@ document.addEventListener('DOMContentLoaded', function() {
         initialView: 'dayGridMonth',
         locale: 'ms',
         events: <?php echo json_encode($events); ?>,
-        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,listMonth' },
+        headerToolbar: { 
+            left: 'prev,next today', 
+            center: 'title', 
+            right: 'dayGridMonth,listMonth' 
+        },
+        height: 'auto',
+        contentHeight: 'auto',
         buttonText: { 
             today: 'Hari Ini', 
             month: 'Bulan', 
             list: 'Senarai',
-            prev: '← Sebelum',
-            next: 'Seterusnya →'
+            prev: '←',
+            next: '→'
         },
         dayCellClassNames: function(arg) {
             // Highlight Sundays in red
