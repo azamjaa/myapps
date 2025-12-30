@@ -335,7 +335,15 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
             <div class="modal-body">
                 <div class="text-center mb-4">
                     <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 100px; height: 100px; overflow: hidden;">
-                        <img id="mGambar" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Profil" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img id="mGambar" 
+                             src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" 
+                             alt="Profil" 
+                             style="width: 100%; 
+                                     height: 100%; 
+                                     object-fit: cover;
+                                     image-rendering: crisp-edges;
+                                     -ms-interpolation-mode: nearest-neighbor;
+                                     image-rendering: pixelated;">
                     </div>
                     <h5 id="mNama" class="fw-bold mb-1"></h5>
                 </div>

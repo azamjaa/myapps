@@ -1,0 +1,48 @@
+/* Image Optimization Styles */
+.image-sharp {
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    -ms-interpolation-mode: nearest-neighbor;
+}
+
+.image-profile {
+    object-fit: cover;
+    display: inline-block;
+    vertical-align: middle;
+    max-width: 100%;
+    height: auto;
+}
+
+.profile-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 2px solid white;
+    background-color: #f8f9fa;
+    overflow: hidden;
+    flex-shrink: 0;
+    margin: 0 auto;
+}
+
+.profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    image-rendering: crisp-edges;
+    -ms-interpolation-mode: nearest-neighbor;
+    image-rendering: pixelated;
+}
+
+/* Center alignment helpers */
+.image-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Prevent image distortion */
+img {
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+}
