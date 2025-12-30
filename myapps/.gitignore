@@ -31,3 +31,5 @@ Thumbs.db
 # Sensitive data
 uploads/
 config.local.php
+
+[ ]
