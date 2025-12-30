@@ -334,16 +334,17 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
             </div>
             <div class="modal-body">
                 <div class="text-center mb-4">
-                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 100px; height: 100px; overflow: hidden;">
+                    <div style="width: 100px; height: 100px; margin: 0 auto 15px; border-radius: 50%; border: 2px solid #ddd; overflow: hidden; background-color: #f8f9fa;">
                         <img id="mGambar" 
                              src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" 
                              alt="Profil" 
                              style="width: 100%; 
                                      height: 100%; 
                                      object-fit: cover;
+                                     object-position: center;
                                      image-rendering: crisp-edges;
-                                     -ms-interpolation-mode: nearest-neighbor;
-                                     image-rendering: pixelated;">
+                                     image-rendering: -webkit-optimize-contrast;
+                                     -ms-interpolation-mode: nearest-neighbor;">
                     </div>
                     <h5 id="mNama" class="fw-bold mb-1"></h5>
                 </div>

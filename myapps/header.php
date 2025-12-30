@@ -192,21 +192,18 @@ require_once 'db.php';
             $profil_pic = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
             if (!empty($_SESSION['gambar'])) { $profil_pic = "uploads/" . $_SESSION['gambar']; }
         ?>
-        <div style="text-align: center;">
-            <img src="<?php echo $profil_pic; ?>" 
-                 class="rounded-circle border border-2 border-white mb-2" 
-                 width="70" 
-                 height="70" 
-                 loading="lazy"
-                 alt="Profile Picture"
-                 style="object-fit: cover; 
-                         image-rendering: crisp-edges;
-                         -ms-interpolation-mode: nearest-neighbor;
-                         image-rendering: pixelated;
-                         display: inline-block;
-                         vertical-align: middle;
-                         max-width: 100%;
-                         height: auto;">
+        <div style="text-align: center; margin-bottom: 15px;">
+            <div style="width: 70px; height: 70px; margin: 0 auto; border-radius: 50%; border: 3px solid white; overflow: hidden; background-color: #f0f0f0; flex-shrink: 0;">
+                <img src="<?php echo $profil_pic; ?>" 
+                     alt="Profile Picture"
+                     style="width: 100%; 
+                             height: 100%; 
+                             object-fit: cover;
+                             object-position: center;
+                             image-rendering: crisp-edges;
+                             image-rendering: -webkit-optimize-contrast;
+                             -ms-interpolation-mode: nearest-neighbor;">
+            </div>
         </div>
         <div class="text-white fw-bold small text-uppercase"><?php echo $_SESSION['nama']; ?></div>
         <span class="badge bg-primary mt-1"><?php echo strtoupper($_SESSION['role']); ?></span>
