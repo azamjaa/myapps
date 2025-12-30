@@ -201,8 +201,13 @@ require_once 'db.php';
                              object-fit: cover;
                              object-position: center;
                              image-rendering: crisp-edges;
+                             image-rendering: pixelated;
                              image-rendering: -webkit-optimize-contrast;
-                             -ms-interpolation-mode: nearest-neighbor;">
+                             -ms-interpolation-mode: nearest-neighbor;
+                             filter: contrast(1.1) brightness(1.05) saturate(1.1);
+                             transform: translate(0,0);
+                             backface-visibility: hidden;
+                             -webkit-backface-visibility: hidden;">
             </div>
         </div>
         <div class="text-white fw-bold small text-uppercase"><?php echo $_SESSION['nama']; ?></div>
