@@ -78,6 +78,48 @@ chmod 755 logs
 
 ---
 
+## 🌐 Cara Mengakses MyApps
+
+### Via Laragon (Local Development):
+
+1. **Pastikan Laragon sudah running**
+   ```bash
+   # Buka Laragon dan click "Start All"
+   # Atau via terminal: laragon start
+   ```
+
+2. **Akses MyApps di browser:**
+   ```
+   http://localhost/myapps
+   OR
+   http://127.0.0.1/myapps
+   ```
+
+3. **Login dengan credentials:**
+   - **No. Kad Pengenalan:** (IC number dari database)
+   - **Kata Laluan:** (Password yang sudah di-hash)
+
+### File Struktur di Laragon:
+
+```
+C:\laragon\www\
+└── myapps/                    # <- Your project here
+    ├── index.php             # Login page
+    ├── dashboard_aplikasi.php # Dashboard aplikasi
+    ├── dashboard_staf.php     # Dashboard staf
+    ├── direktori_aplikasi.php # Directory aplikasi
+    ├── direktori_staf.php     # Directory staf
+    └── [other files]
+```
+
+### Via Web Server (Production):
+
+```
+https://your-domain.com/myapps/
+```
+
+---
+
 ## 🧪 Testing
 
 ### Test Login Rate Limiting:
