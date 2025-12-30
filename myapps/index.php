@@ -58,110 +58,111 @@ if (isset($_POST['login'])) {
         $no_kp = $_POST['no_kp'];
         $password = $_POST['password']; 
 
-    // Find user & security info
-    $stmt = $db->prepare("SELECT s.id_staf, s.nama, s.emel, s.gambar, l.password_hash, l.tarikh_tukar_katalaluan
-                           FROM staf s 
-                           JOIN login l ON s.id_staf = l.id_staf 
-                           WHERE s.no_kp = ? AND s.id_status = 1");
-    $stmt->execute([$no_kp]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Find user & security info
+        $stmt = $db->prepare("SELECT s.id_staf, s.nama, s.emel, s.gambar, l.password_hash, l.tarikh_tukar_katalaluan
+                               FROM staf s 
+                               JOIN login l ON s.id_staf = l.id_staf 
+                               WHERE s.no_kp = ? AND s.id_status = 1");
+        $stmt->execute([$no_kp]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($user) {
-        $db_hash = $user['password_hash'];
-        // Use password_verify directly - no bracket trimming needed
-        
-        if (password_verify($password, $db_hash)) {
-            if ($password === '123456') {
-                $_SESSION['temp_id'] = $user['id_staf'];
-                header("Location: tukar_katalaluan_wajib.php");
-                exit();
-            }
-
-            // 2. AUTO EXPIRED (90 DAYS)
-            $tarikh_last = new DateTime($user['tarikh_tukar_katalaluan']);
-            $tarikh_kini = new DateTime();
-            if ($tarikh_last->diff($tarikh_kini)->days > 90) {
-                $_SESSION['temp_id'] = $user['id_staf'];
-                header("Location: tukar_katalaluan_wajib.php");
-                exit();
-            }
-
-            // 3. LOGIN SUCCESS
-            $_SESSION['user_id'] = $user['id_staf'];
-            $_SESSION['nama'] = $user['nama'];
-            $_SESSION['gambar'] = $user['gambar'];
+        if ($user) {
+            $db_hash = $user['password_hash'];
+            // Use password_verify directly - no bracket trimming needed
             
-            // Check if user is admin
-            $adminCheck = $db->prepare("SELECT COUNT(*) as admin_count FROM akses WHERE id_staf = ? AND id_level = 3");
-            $adminCheck->execute([$user['id_staf']]);
-            $isAdmin = $adminCheck->fetch()['admin_count'] > 0;
-            $_SESSION['role'] = $isAdmin ? 'admin' : 'user';
-            
-            // Generate JWT Token if available
-            if ($hasJWT && defined('JWT_SECRET_KEY')) {
-                try {
-                    $issuedAt = time();
-                    $expirationTime = $issuedAt + 3600 * 8; // 8 hours
-                    
-                    $payload = [
-                        'iat' => $issuedAt,
-                        'exp' => $expirationTime,
-                        'iss' => defined('APP_URL') ? APP_URL : 'http://127.0.0.1/myapps',
-                        'aud' => defined('APP_URL') ? APP_URL : 'http://127.0.0.1/myapps',
-                        'data' => [
-                            'user_id' => $user['id_staf'],
-                            'username' => $no_kp,
-                            'role' => $_SESSION['role'],
-                            'email' => $user['emel'] ?? ''
-                        ]
-                    ];
-                    
-                    $token = JWT::encode($payload, JWT_SECRET_KEY, 'HS256');
-                    $_SESSION['sso_token'] = $token;
-                } catch (Exception $e) {
-                    error_log("JWT Error: " . $e->getMessage());
+            if (password_verify($password, $db_hash)) {
+                if ($password === '123456') {
+                    $_SESSION['temp_id'] = $user['id_staf'];
+                    header("Location: tukar_katalaluan_wajib.php");
+                    exit();
+                }
+
+                // 2. AUTO EXPIRED (90 DAYS)
+                $tarikh_last = new DateTime($user['tarikh_tukar_katalaluan']);
+                $tarikh_kini = new DateTime();
+                if ($tarikh_last->diff($tarikh_kini)->days > 90) {
+                    $_SESSION['temp_id'] = $user['id_staf'];
+                    header("Location: tukar_katalaluan_wajib.php");
+                    exit();
+                }
+
+                // 3. LOGIN SUCCESS
+                $_SESSION['user_id'] = $user['id_staf'];
+                $_SESSION['nama'] = $user['nama'];
+                $_SESSION['gambar'] = $user['gambar'];
+                
+                // Check if user is admin
+                $adminCheck = $db->prepare("SELECT COUNT(*) as admin_count FROM akses WHERE id_staf = ? AND id_level = 3");
+                $adminCheck->execute([$user['id_staf']]);
+                $isAdmin = $adminCheck->fetch()['admin_count'] > 0;
+                $_SESSION['role'] = $isAdmin ? 'admin' : 'user';
+                
+                // Generate JWT Token if available
+                if ($hasJWT && defined('JWT_SECRET_KEY')) {
+                    try {
+                        $issuedAt = time();
+                        $expirationTime = $issuedAt + 3600 * 8; // 8 hours
+                        
+                        $payload = [
+                            'iat' => $issuedAt,
+                            'exp' => $expirationTime,
+                            'iss' => defined('APP_URL') ? APP_URL : 'http://127.0.0.1/myapps',
+                            'aud' => defined('APP_URL') ? APP_URL : 'http://127.0.0.1/myapps',
+                            'data' => [
+                                'user_id' => $user['id_staf'],
+                                'username' => $no_kp,
+                                'role' => $_SESSION['role'],
+                                'email' => $user['emel'] ?? ''
+                            ]
+                        ];
+                        
+                        $token = JWT::encode($payload, JWT_SECRET_KEY, 'HS256');
+                        $_SESSION['sso_token'] = $token;
+                    } catch (Exception $e) {
+                        error_log("JWT Error: " . $e->getMessage());
+                    }
+                }
+                
+                // Regenerate session ID for security
+                session_regenerate_id(true);
+
+                // Secure Redirect
+                $allowed_redirects = [
+                    'dashboard_aplikasi.php', 
+                    'dashboard_staf.php', 
+                    'direktori_staf.php', 
+                    'direktori_aplikasi.php',
+                    'kalendar.php'
+                ];
+                
+                $redirect_to = 'dashboard_aplikasi.php';
+                
+                if (isset($_GET['redirect']) && !empty($_GET['redirect'])) {
+                    $requested_redirect = basename($_GET['redirect']);
+                    if (in_array($requested_redirect, $allowed_redirects)) {
+                        $redirect_to = $requested_redirect;
+                    }
+                }
+                
+                // Log successful login if audit available
+                if ($hasAudit && function_exists('log_audit')) {
+                    log_audit('LOGIN_SUCCESS', 'staf', $user['id_staf'], null, $user['nama']);
+                }
+                
+                header("Location: " . $redirect_to);
+                exit();
+
+            } else {
+                $error = 'Kombinasi No. Kad Pengenalan dan Kata Laluan tidak sah.';
+                if ($hasAudit && function_exists('log_audit')) {
+                    log_audit('LOGIN_FAILED', 'staf', null, null, 'Wrong password: ' . $no_kp);
                 }
             }
-            
-            // Regenerate session ID for security
-            session_regenerate_id(true);
-
-            // Secure Redirect
-            $allowed_redirects = [
-                'dashboard_aplikasi.php', 
-                'dashboard_staf.php', 
-                'direktori_staf.php', 
-                'direktori_aplikasi.php',
-                'kalendar.php'
-            ];
-            
-            $redirect_to = 'dashboard_aplikasi.php';
-            
-            if (isset($_GET['redirect']) && !empty($_GET['redirect'])) {
-                $requested_redirect = basename($_GET['redirect']);
-                if (in_array($requested_redirect, $allowed_redirects)) {
-                    $redirect_to = $requested_redirect;
-                }
-            }
-            
-            // Log successful login if audit available
-            if ($hasAudit && function_exists('log_audit')) {
-                log_audit('LOGIN_SUCCESS', 'staf', $user['id_staf'], null, $user['nama']);
-            }
-            
-            header("Location: " . $redirect_to);
-            exit();
-
         } else {
-            $error = 'Kombinasi No. Kad Pengenalan dan Kata Laluan tidak sah.';
+            $error = 'Akaun tidak ditemui atau tidak aktif.';
             if ($hasAudit && function_exists('log_audit')) {
-                log_audit('LOGIN_FAILED', 'staf', null, null, 'Wrong password: ' . $no_kp);
+                log_audit('LOGIN_FAILED', 'staf', null, null, 'User not found: ' . $no_kp);
             }
-        }
-    } else {
-        $error = 'Akaun tidak ditemui atau tidak aktif.';
-        if ($hasAudit && function_exists('log_audit')) {
-            log_audit('LOGIN_FAILED', 'staf', null, null, 'User not found: ' . $no_kp);
         }
     }
 }
