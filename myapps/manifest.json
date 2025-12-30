@@ -1,0 +1,36 @@
+{
+  "name": "MyApps KEDA",
+  "short_name": "KEDA",
+  "description": "Sistem Direktori Aplikasi KEDA",
+  "start_url": "/myapps/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "image/keda.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "image/keda.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "image/background.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg"
+    }
+  ],
+  "categories": ["productivity", "business"],
+  "lang": "ms-MY",
+  "dir": "ltr",
+  "prefer_related_applications": false
+}
+
