@@ -23,10 +23,23 @@ class API {
         $this->headers = getallheaders();
         
         // Set JSON header
-        header('Content-Type: application/json');
-        header('Access-Control-Allow-Origin: *');
+        header('Content-Type: application/json; charset=utf-8');
+        
+        // CORS - Restrict to allowed origins only
+        $allowed_origins = explode(',', getenv('CORS_ALLOWED_ORIGINS') ?: 'http://127.0.0.1');
+        $request_origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+        
+        if (in_array($request_origin, $allowed_origins)) {
+            header('Access-Control-Allow-Origin: ' . $request_origin);
+            header('Access-Control-Allow-Credentials: true');
+        }
+        
         header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
         header('Access-Control-Allow-Headers: Content-Type, Authorization');
+        header('Access-Control-Max-Age: 3600');
+        
+        // Rate limiting check
+        $this->checkRateLimit();
         
         // Handle OPTIONS request (CORS preflight)
         if ($this->requestMethod === 'OPTIONS') {
@@ -98,6 +111,35 @@ class API {
     protected function requireAuth() {
         if (!$this->userId) {
             $this->sendResponse(401, false, 'Authentication required');
+        }
+    }
+    
+    /**
+     * Check rate limiting
+     */
+    protected function checkRateLimit() {
+        if (!getenv('RATE_LIMIT_ENABLED')) {
+            return true;
+        }
+        
+        $ip = $_SERVER['REMOTE_ADDR'];
+        $limit_key = 'rate_limit_' . $ip;
+        $max_attempts = (int)getenv('RATE_LIMIT_ATTEMPTS') ?: 5;
+        $window = (int)getenv('RATE_LIMIT_WINDOW') ?: 900; // 15 minutes
+        
+        // Check if request exceeds limit
+        if (isset($_SESSION[$limit_key])) {
+            if (time() - $_SESSION[$limit_key]['timestamp'] < $window) {
+                $_SESSION[$limit_key]['count']++;
+                if ($_SESSION[$limit_key]['count'] > $max_attempts) {
+                    $this->sendResponse(429, false, 'Too many requests. Please try again later.');
+                }
+            } else {
+                // Reset counter after window expires
+                $_SESSION[$limit_key] = ['count' => 1, 'timestamp' => time()];
+            }
+        } else {
+            $_SESSION[$limit_key] = ['count' => 1, 'timestamp' => time()];
         }
     }
     

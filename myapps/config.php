@@ -41,16 +41,15 @@ function loadEnv($path = '.env') {
 // Load .env file (optional - fallback to defaults if not exists)
 $env_loaded = loadEnv(__DIR__ . '/.env');
 
-// If .env not loaded, use hardcoded defaults (backward compatibility)
+// If .env not loaded, throw error in production
 if (!$env_loaded) {
-    // Set default environment variables
-    putenv("DB_HOST=127.0.0.1");
-    putenv("DB_USERNAME=root");
-    putenv("DB_PASSWORD=Noor@z@m1982");
-    putenv("DB_DATABASE=myapps");
+    if (env('APP_ENV', 'production') === 'production') {
+        throw new Exception('.env file is required in production environment');
+    }
+    // Development fallback only
     putenv("APP_NAME=MyApps KEDA");
-    putenv("APP_ENV=production");
-    putenv("APP_DEBUG=false");
+    putenv("APP_ENV=development");
+    putenv("APP_DEBUG=true");
 }
 
 // Helper function to get environment variable with fallback

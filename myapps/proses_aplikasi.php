@@ -41,17 +41,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verifyCsrfToken(); // CSRF Protection
     
     try {
-        $nama_aplikasi = $_POST['nama_aplikasi'] ?? '';
+        $nama_aplikasi = trim($_POST['nama_aplikasi'] ?? '');
         $id_kategori = intval($_POST['id_kategori'] ?? 0);
-        $keterangan = $_POST['keterangan'] ?? '';
-        $url = $_POST['url'] ?? '';
+        $keterangan = trim($_POST['keterangan'] ?? '');
+        $url = trim($_POST['url'] ?? '');
         $warna_bg = $kategori_warna[$id_kategori] ?? '#007bff';
         $sso_comply = isset($_POST['sso_comply']) ? 1 : 0;
         $status = isset($_POST['status']) ? intval($_POST['status']) : 1;
 
+        // Validate required fields
         if (empty($nama_aplikasi) || $id_kategori <= 0) {
             throw new Exception("Nama aplikasi dan kategori diperlukan");
         }
+        
+        // Validate URL if provided
+        if (!empty($url)) {
+            if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                throw new Exception("URL tidak sah");
+            }
+        }
+        
+        // Sanitize text fields
+        $nama_aplikasi = htmlspecialchars($nama_aplikasi, ENT_QUOTES, 'UTF-8');
+        $keterangan = htmlspecialchars($keterangan, ENT_QUOTES, 'UTF-8');
+        $url = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
 
         if ($edit_mode) {
             // Update existing

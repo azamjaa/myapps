@@ -15,14 +15,14 @@ function hantarEmel($penerima, $subjek, $isi) {
         $mail->SMTPDebug = 0; 
 
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = getenv('MAIL_HOST') ?: 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'admin@keda.gov.my'; 
-        $mail->Password   = 'pdbp eawb ixvv hjyp'; // App Password
+        $mail->Username   = getenv('MAIL_USERNAME');
+        $mail->Password   = getenv('MAIL_PASSWORD');
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $mail->Port       = getenv('MAIL_PORT') ?: 587;
 
-        $mail->setFrom('admin@keda.gov.my', 'Sistem MyApps');
+        $mail->setFrom(getenv('MAIL_USERNAME'), getenv('MAIL_FROM_NAME') ?: 'Sistem MyApps');
         $mail->addAddress($penerima);
 
         $mail->isHTML(true);

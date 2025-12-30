@@ -6,11 +6,21 @@ ini_set('session.cookie_samesite', 'Strict');
 
 // PHP SECURITY SETTINGS (moved from .htaccess for FastCGI compatibility)
 ini_set('expose_php', 0); // Hide PHP version
-ini_set('display_errors', 0); // Don't show errors to users
+$is_production = (getenv('APP_ENV') === 'production');
+ini_set('display_errors', $is_production ? 0 : 1); // Hide errors in production
 ini_set('display_startup_errors', 0);
 ini_set('log_errors', 1); // Log errors instead
 ini_set('upload_max_filesize', '2M'); // File upload limit
 ini_set('post_max_size', '2M'); // POST data limit
+
+// SECURITY HEADERS
+header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: SAMEORIGIN');
+header('X-XSS-Protection: 1; mode=block');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+if ($is_production) {
+    header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+}
 
 // MULA SESI JIKA BELUM ADA
 if (session_status() == PHP_SESSION_NONE) {

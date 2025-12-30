@@ -12,9 +12,10 @@ header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 header("Expires: 0");
 
-// Error handling for development
+// Error handling
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+$is_production = (getenv('APP_ENV') === 'production');
+ini_set('display_errors', $is_production ? 0 : 1);
 
 require 'db.php';
 
@@ -34,8 +35,28 @@ $error = '';
 $success = '';
 
 if (isset($_POST['login'])) {
-    $no_kp = $_POST['no_kp'];
-    $password = $_POST['password']; 
+    // Rate limiting check (5 attempts per 15 minutes)
+    $ip = $_SERVER['REMOTE_ADDR'];
+    $limit_key = 'login_attempt_' . $ip;
+    $max_attempts = 5;
+    $window = 900; // 15 minutes
+    
+    if (isset($_SESSION[$limit_key])) {
+        if (time() - $_SESSION[$limit_key]['timestamp'] < $window) {
+            $_SESSION[$limit_key]['count']++;
+            if ($_SESSION[$limit_key]['count'] > $max_attempts) {
+                $error = 'Terlalu banyak percobaan login gagal. Sila cuba lagi dalam 15 minit.';
+            }
+        } else {
+            $_SESSION[$limit_key] = ['count' => 1, 'timestamp' => time()];
+        }
+    } else {
+        $_SESSION[$limit_key] = ['count' => 1, 'timestamp' => time()];
+    }
+    
+    if (empty($error)) {
+        $no_kp = $_POST['no_kp'];
+        $password = $_POST['password']; 
 
     // Find user & security info
     $stmt = $db->prepare("SELECT s.id_staf, s.nama, s.emel, s.gambar, l.password_hash, l.tarikh_tukar_katalaluan
@@ -47,11 +68,9 @@ if (isset($_POST['login'])) {
 
     if ($user) {
         $db_hash = $user['password_hash'];
-        $clean_hash = trim($db_hash, "[]"); 
-
-        if (password_verify($password, $clean_hash)) {
-            
-            // 1. PREVENT STANDARD PASSWORD (123456)
+        // Use password_verify directly - no bracket trimming needed
+        
+        if (password_verify($password, $db_hash)) {
             if ($password === '123456') {
                 $_SESSION['temp_id'] = $user['id_staf'];
                 header("Location: tukar_katalaluan_wajib.php");
