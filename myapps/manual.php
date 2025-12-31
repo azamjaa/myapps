@@ -60,7 +60,6 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
                             <i class="fas fa-chart-line me-2"></i>Dashboard
-                        </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="direktori-tab" data-bs-toggle="tab" data-bs-target="#direktori" type="button" role="tab">
@@ -96,7 +95,7 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
                                 <li>📋 Direktori - Carian lengkap aplikasi dan maklumat staf</li>
                                 <li>📅 Kalendar - Jadual hari lahir staf</li>
                                 <li>💬 Chat - Bantuan digital melalui bot Mawar</li>
-                                <li>📱 PWA - Aplikasi dapat dipasang di peranti mudah alih</li>
+                                <li>📱 MyApps Mobile - Aplikasi dapat dipasang di peranti mudah alih</li>
                             </ul>
 
                             <h6 class="mt-4 mb-2">Untuk Memulakan:</h6>
@@ -176,7 +175,7 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
                                 <li>Paparan hari lahir semua staf dalam bentuk kalendar</li>
                                 <li>Lihat nama staf yang berulang tahun pada hari tertentu</li>
                                 <li>Klik pada nama staf untuk lihat maklumat terperinci</li>
-                                <li>Berlaku untuk 15 tahun ke hadapan</li>
+                                <li>Boleh pilih paparan ikut bulan, hari atau senarai hari lahir</li>
                             </ul>
 
                             <h6 class="mt-3 mb-2">Cara Menggunakan:</h6>
@@ -260,12 +259,22 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
                         <div class="accordion-item">
                             <h2 class="accordion-header">
                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
-                                    Boleh pasang PWA di telefon?
+                                    Cara pasang MyApps Mobile di telefon
                                 </button>
                             </h2>
                             <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                                 <div class="accordion-body">
-                                    Ya! Klik butang "Install App" di bahagian atas, atau gunakan menu "Add to Home Screen" di browser telefon.
+                                    <b>Android (Google Chrome):</b><br>
+                                    1. Buka laman MyApps di Google Chrome.<br>
+                                    2. Tekan ikon menu (tiga titik di penjuru atas kanan).<br>
+                                    3. Pilih <b>Add to Home screen</b> atau <b>Install app</b>.<br>
+                                    4. Ikon MyApps akan muncul di skrin utama telefon anda.<br><br>
+                                    <b>iPhone (Safari):</b><br>
+                                    1. Buka laman MyApps di Safari.<br>
+                                    2. Tekan ikon <b>Share</b> (petak dengan anak panah ke atas) di bawah.<br>
+                                    3. Pilih <b>Add to Home Screen</b>.<br>
+                                    4. Ikon MyApps akan muncul di skrin utama iPhone anda.<br><br>
+                                    <i>Nota: Pastikan anda menggunakan browser yang disokong (Chrome untuk Android, Safari untuk iPhone).</i>
                                 </div>
                             </div>
                         </div>
@@ -301,9 +310,9 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
             <div class="card border-0 shadow-sm mt-3">
                 <div class="card-body">
                     <h6 class="card-title mb-3"><i class="fas fa-headset me-2 text-info"></i>Hubungi Sokongan</h6>
-                    <p class="small mb-2"><strong>Emel:</strong> <a href="mailto:support@keda.gov.my">support@keda.gov.my</a></p>
-                    <p class="small mb-2"><strong>Telefon:</strong> <a href="tel:+60123456789">+60 1 2345 6789</a></p>
-                    <p class="small"><strong>Jam Operasi:</strong> Isnin - Jumaat, 8:00 AM - 5:00 PM</p>
+                    <p class="small mb-2"><strong>Emel:</strong> <a href="mailto:support@keda.gov.my">utm@keda.gov.my</a></p>
+                    <p class="small mb-2"><strong>Telefon:</strong> <a href="tel:+60123456789">+604-7205300</a></p>
+                    <p class="small"><strong>Jam Operasi:</strong> Ahad - Khamis, 9:00 AM - 5:00 PM</p>
                 </div>
             </div>
         </div>

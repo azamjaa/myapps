@@ -374,13 +374,7 @@ require_once 'db.php';
 
     <!-- Desktop Top Bar -->
     <div class="d-none d-md-flex bg-white p-3 mb-4 shadow-sm rounded justify-content-between align-items-center">
-        <h5 class="mb-0 fw-bold text-secondary">
-            <?php 
-                // Auto title based on filename
-                $page = basename($_SERVER['PHP_SELF'], ".php");
-                echo ucwords(str_replace("_", " ", $page));
-            ?>
-        </h5>
+        <h5 class="mb-0 fw-bold text-secondary">MyApps KEDA</h5>
         <div class="d-flex gap-2">
             <!-- PWA Install Button -->
             <button id="pwa-install-btn" onclick="installPWA()" class="btn btn-success btn-sm rounded-pill hidden">

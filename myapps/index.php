@@ -1,3 +1,22 @@
+            <script>
+            // Buka semua link ke domain luar di browser (tab baru)
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('a').forEach(function(link) {
+                    if (
+                        link.hostname &&
+                        link.hostname !== window.location.hostname
+                    ) {
+                        link.addEventListener('click', function(e) {
+                            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+                                e.preventDefault();
+                                window.open(link.href, '_blank');
+                            }
+                        });
+                    }
+                });
+            });
+            </script>
+
 <?php
 /**
  * MyApps KEDA
@@ -341,21 +360,20 @@ if (isset($_GET['expired']) && $_GET['expired'] == 1) {
             </div>
         </div>
         
-        <!-- PWA Install Hint -->
-        <div class="text-center mt-6">
-            <button id="pwa-install-hint" 
-                    onclick="installPWA()" 
-                    class="hidden bg-white/20 backdrop-blur-sm text-white px-6 py-3 rounded-xl hover:bg-white/30 transition-all">
-                <i class="fas fa-download mr-2"></i>
-                Pasang Aplikasi
+        <!-- PWA Install Hint (Android/Chrome) -->
+        <div class="flex justify-center mt-6">
+            <button id="pwa-install-hint"
+                onclick="installPWA()"
+                class="hidden flex items-center gap-3 px-7 py-3 rounded-2xl shadow-lg bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-semibold text-lg tracking-wide border-2 border-white/30 hover:from-blue-700 hover:to-purple-700 hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-300">
+                <span class="flex items-center justify-center w-8 h-8 rounded-full bg-white/20">
+                    <i class="fas fa-cloud-arrow-down fa-lg"></i>
+                </span>
+                <span>
+                    Pasang MyApps ke Telefon<br>
+                    <span class="text-xs font-normal text-white/80">Akses pantas & selamat, terus dari skrin utama anda</span>
+                </span>
             </button>
-        </div>
-    </div>
 
-    <!-- PWA Installer Script -->
-    <?php if (file_exists('pwa-installer.js')): ?>
-    <script src="pwa-installer.js"></script>
-    <?php endif; ?>
 
     <script>
     // Toggle Password Visibility
