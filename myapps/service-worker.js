@@ -6,14 +6,12 @@
  */
 
 const CACHE_NAME = 'myapps-keda-v3.0-sidebar'; // Updated version to force refresh
-const OFFLINE_URL = '/myapps/offline.html';
 
 // Static assets (CSS, Images, Fonts) - Cache First
 const STATIC_ASSETS = [
     '/myapps/image/keda.png',
     '/myapps/image/background.jpg',
     '/myapps/image/mawar.png',
-    '/myapps/offline.html',
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
     'https://cdn.tailwindcss.com',
@@ -61,7 +59,7 @@ self.addEventListener('fetch', (event) => {
     const requestUrl = new URL(event.request.url);
 
     // STRATEGY 1: Network First (For HTML pages - ensure latest layout)
-    // Checks network -> if fails, check cache -> if fails, offline page
+    // Checks network -> if fails, check cache -> if fails, show nothing (no offline fallback)
     if (requestUrl.pathname.endsWith('.php') || requestUrl.pathname.endsWith('/')) {
         event.respondWith(
             fetch(event.request)
@@ -74,10 +72,8 @@ self.addEventListener('fetch', (event) => {
                     return response;
                 })
                 .catch(() => {
-                    // If offline, try cache
-                    return caches.match(event.request).then((response) => {
-                        return response || caches.match(OFFLINE_URL);
-                    });
+                    // If offline, do not serve anything
+                    return Promise.reject('Offline, no fallback');
                 })
         );
         return;

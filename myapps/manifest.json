@@ -1,6 +1,6 @@
 {
   "name": "MyApps KEDA",
-  "short_name": "KEDA",
+  "short_name": "MyApps KEDA",
   "description": "Sistem Direktori Aplikasi KEDA",
   "start_url": "/myapps/",
   "scope": "/myapps/",
