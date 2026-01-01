@@ -99,7 +99,7 @@ $dbname = $config['database']['database'];
 try {
     $db = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $db = $db; // Alias untuk kemudahan
+    $pdo = $db; // Gunakan $pdo sebagai variable global
 } catch(PDOException $e) {
     // Don't expose detailed error in production
     if ($config['app']['debug']) {
