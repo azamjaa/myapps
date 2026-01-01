@@ -1,12 +1,15 @@
 <?php
-// IMPROVE SESSION SECURITY (MUST BE SET BEFORE session_start)
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_strict_mode', 1);
-ini_set('session.cookie_samesite', 'Strict');
+// SEMUA SETTING SESSION MESTI SEBELUM session_start()
+if (session_status() == PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.use_strict_mode', 1);
+    ini_set('session.cookie_samesite', 'Strict');
+    session_start();
+}
 
 // PHP SECURITY SETTINGS (moved from .htaccess for FastCGI compatibility)
-ini_set('expose_php', 0); // Hide PHP version
 $is_production = (getenv('APP_ENV') === 'production');
+ini_set('expose_php', 0); // Hide PHP version
 ini_set('display_errors', $is_production ? 0 : 1); // Hide errors in production
 ini_set('display_startup_errors', 0);
 ini_set('log_errors', 1); // Log errors instead
@@ -20,11 +23,6 @@ header('X-XSS-Protection: 1; mode=block');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 if ($is_production) {
     header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
-}
-
-// MULA SESI JIKA BELUM ADA
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
 }
 
 // SET ZON MASA
@@ -110,5 +108,28 @@ try {
         error_log("Database Connection Error: " . $e->getMessage());
         die("Maaf, sistem mengalami masalah teknikal. Sila hubungi admin.");
     }
+}
+
+/**
+ * Fungsi Semak Akses RBAC Enterprise
+ * @param int $user_id ID pengguna dari session
+ * @param int $app_id ID aplikasi (rujuk table aplikasi)
+ * @param string $perm_name Nama permission (contoh: 'edit_staf')
+ */
+function hasAccess($pdo, $user_id, $app_id, $perm_name) {
+    $sql = "SELECT COUNT(*) 
+            FROM user_roles ur
+            JOIN role_permissions rp ON ur.id_role = rp.id_role
+            JOIN permissions p ON rp.id_permission = p.id_permission
+            WHERE ur.id_user = :user_id 
+            AND p.id_aplikasi = :app_id 
+            AND p.perm_name = :perm_name";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([
+        'user_id'   => $user_id,
+        'app_id'    => $app_id,
+        'perm_name' => $perm_name
+    ]);
+    return $stmt->fetchColumn() > 0;
 }
 ?>

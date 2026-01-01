@@ -1,8 +1,10 @@
 <?php
 require 'db.php';
 
-// Check if user is admin
-$checkAdmin = $db->prepare("SELECT COUNT(*) as cnt FROM akses WHERE id_staf = ? AND id_level = 3");
+// Check if user is admin or super_admin using new RBAC
+$checkAdmin = $db->prepare("SELECT COUNT(*) as cnt FROM user_roles ur 
+                            JOIN roles r ON ur.id_role = r.id_role 
+                            WHERE ur.id_user = ? AND r.name IN ('admin', 'super_admin')");
 $checkAdmin->execute([$_SESSION['user_id']]);
 $is_admin = $checkAdmin->fetch()['cnt'] > 0;
 

@@ -11,14 +11,15 @@ if (isset($_POST['change_pass'])) {
     $current_pass = $_POST['current_password'];
     $new_pass     = $_POST['new_password'];
     $confirm_pass = $_POST['confirm_password'];
-    $id_staf      = $_SESSION['user_id'] ?? null;
 
-    if (!$id_staf) {
+    $id_user      = $_SESSION['user_id'] ?? null;
+
+    if (!$id_user) {
         $msg = "<div class='alert alert-danger'>Ralat: Session tidak sah. Sila login semula.</div>";
     } else {
         // 1. Ambil Password Lama dari DB
-        $stmt = $db->prepare("SELECT password_hash FROM login WHERE id_staf = ?");
-        $stmt->execute([$id_staf]);
+        $stmt = $db->prepare("SELECT password_hash FROM login WHERE id_user = ?");
+        $stmt->execute([$id_user]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$user) {
@@ -50,9 +51,9 @@ if (isset($_POST['change_pass'])) {
             else {
                 $new_hash = password_hash($new_pass, PASSWORD_DEFAULT);
                 // Update password & reset tarikh luput 90 hari
-                $update = $db->prepare("UPDATE login SET password_hash = ?, tarikh_tukar_katalaluan = NOW() WHERE id_staf = ?");
+                $update = $db->prepare("UPDATE login SET password_hash = ?, tarikh_tukar_katalaluan = NOW() WHERE id_user = ?");
                 
-                if ($update->execute([$new_hash, $id_staf])) {
+                if ($update->execute([$new_hash, $id_user])) {
                     echo "<script>alert('Kata laluan berjaya ditukar! Sila log masuk semula.'); window.location='logout.php';</script>";
                     exit();
                 } else {

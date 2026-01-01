@@ -78,20 +78,27 @@ if (isset($_POST['login'])) {
         $password = $_POST['password']; 
 
         // Find user & security info
-        $stmt = $db->prepare("SELECT s.id_staf, s.nama, s.emel, s.gambar, l.password_hash, l.tarikh_tukar_katalaluan
-                               FROM staf s 
-                               JOIN login l ON s.id_staf = l.id_staf 
-                               WHERE s.no_kp = ? AND s.id_status = 1");
+            $stmt = $db->prepare("SELECT u.id_user, u.nama, u.emel, u.gambar, l.password_hash, l.tarikh_tukar_katalaluan
+                       FROM users u 
+                       JOIN login l ON u.id_user = l.id_user 
+                       WHERE u.no_kp = ? AND u.id_status = 1");
         $stmt->execute([$no_kp]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user) {
-            $db_hash = $user['password_hash'];
-            // Use password_verify directly - no bracket trimming needed
+            // Check account status
+            $status = $user['status_account'] ?? 'active';
+            if ($status === 'suspended') {
+                $error = "Akaun anda telah digantung. Sila hubungi pentadbir.";
+            } elseif ($status === 'inactive') {
+                $error = "Akaun anda tidak aktif. Sila hubungi pentadbir.";
+            } else {
+                $db_hash = $user['password_hash'];
+                // Use password_verify directly - no bracket trimming needed
             
             if (password_verify($password, $db_hash)) {
                 if ($password === '123456') {
-                    $_SESSION['temp_id'] = $user['id_staf'];
+                    $_SESSION['temp_id'] = $user['id_user'];
                     header("Location: tukar_katalaluan_wajib.php");
                     exit();
                 }
@@ -100,21 +107,26 @@ if (isset($_POST['login'])) {
                 $tarikh_last = new DateTime($user['tarikh_tukar_katalaluan']);
                 $tarikh_kini = new DateTime();
                 if ($tarikh_last->diff($tarikh_kini)->days > 90) {
-                    $_SESSION['temp_id'] = $user['id_staf'];
+                    $_SESSION['temp_id'] = $user['id_user'];
                     header("Location: tukar_katalaluan_wajib.php");
                     exit();
                 }
 
                 // 3. LOGIN SUCCESS
-                $_SESSION['user_id'] = $user['id_staf'];
+                $_SESSION['user_id'] = $user['id_user'];
                 $_SESSION['nama'] = $user['nama'];
                 $_SESSION['gambar'] = $user['gambar'];
-                
-                // Check if user is admin
-                $adminCheck = $db->prepare("SELECT COUNT(*) as admin_count FROM akses WHERE id_staf = ? AND id_level = 3");
-                $adminCheck->execute([$user['id_staf']]);
-                $isAdmin = $adminCheck->fetch()['admin_count'] > 0;
-                $_SESSION['role'] = $isAdmin ? 'admin' : 'user';
+
+                // Ambil role utama dari user_roles (role dengan id_role paling kecil dianggap utama)
+                $roleQ = $db->prepare("SELECT r.name FROM user_roles ur JOIN roles r ON ur.id_role = r.id_role WHERE ur.id_user = ? ORDER BY ur.id_role ASC LIMIT 1");
+                $roleQ->execute([$user['id_user']]);
+                $mainRole = $roleQ->fetchColumn();
+                if ($mainRole) {
+                    $_SESSION['role'] = $mainRole;
+                } else {
+                    // fallback: jika user tidak ada role, set sebagai user_biasa
+                    $_SESSION['role'] = 'user_biasa';
+                }
                 
                 // Generate JWT Token if available
                 if ($hasJWT && defined('JWT_SECRET_KEY')) {
@@ -128,7 +140,7 @@ if (isset($_POST['login'])) {
                             'iss' => defined('APP_URL') ? APP_URL : 'http://127.0.0.1/myapps',
                             'aud' => defined('APP_URL') ? APP_URL : 'http://127.0.0.1/myapps',
                             'data' => [
-                                'user_id' => $user['id_staf'],
+                                'user_id' => $user['id_user'],
                                 'username' => $no_kp,
                                 'role' => $_SESSION['role'],
                                 'email' => $user['emel'] ?? ''
@@ -144,6 +156,10 @@ if (isset($_POST['login'])) {
                 
                 // Regenerate session ID for security
                 session_regenerate_id(true);
+
+                // Update last login timestamp and reset login attempts
+                $db->prepare("UPDATE users SET last_login = NOW(), login_attempts = 0, locked_until = NULL WHERE id_user = ?")
+                   ->execute([$user['id_user']]);
 
                 // Secure Redirect
                 $allowed_redirects = [
@@ -165,7 +181,7 @@ if (isset($_POST['login'])) {
                 
                 // Log successful login if audit available
                 if ($hasAudit && function_exists('log_audit')) {
-                    log_audit('LOGIN_SUCCESS', 'staf', $user['id_staf'], null, $user['nama']);
+                        log_audit('LOGIN_SUCCESS', 'users', $user['id_user'], null, $user['nama']);
                 }
                 
                 header("Location: " . $redirect_to);
@@ -177,6 +193,7 @@ if (isset($_POST['login'])) {
                     log_audit('LOGIN_FAILED', 'staf', null, null, 'Wrong password: ' . $no_kp);
                 }
             }
+            } // End status check
         } else {
             $error = 'Akaun tidak ditemui atau tidak aktif.';
             if ($hasAudit && function_exists('log_audit')) {

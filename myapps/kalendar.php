@@ -9,14 +9,14 @@ $current_year = date('Y');
 $year_range_start = 2000;
 $year_range_end = $current_year + 15;
 
-// 1. DATA QUERY (Penting: Ambil id_staf)
-$sql = "SELECT s.id_staf, s.nama, s.no_kp, s.emel, s.telefon, 
+// 1. DATA QUERY (Penting: Ambil id_user)
+$sql = "SELECT u.id_user, u.nama, u.no_kp, u.emel, u.telefon, 
                j.jawatan, b.bahagian, g.gred
-        FROM staf s 
-        LEFT JOIN jawatan j ON s.id_jawatan = j.id_jawatan 
-        LEFT JOIN bahagian b ON s.id_bahagian = b.id_bahagian
-        LEFT JOIN gred g ON s.id_gred = g.id_gred
-        WHERE s.id_status = 1";
+        FROM users u 
+        LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan 
+        LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
+        LEFT JOIN gred g ON u.id_gred = g.id_gred
+        WHERE u.id_status = 1";
 
 try {
     $stmt = $db->query($sql);
@@ -41,7 +41,7 @@ try {
                 'title' => $row['nama'],
                 'start' => "$year-$bulan-$hari", 
                 'extendedProps' => [ 
-                    'id_staf' => $row['id_staf'], // ID Staf (Penting)
+                    'id_user' => $row['id_user'], // ID User (Penting)
                     'jawatan' => $jawatan, 
                     'bahagian' => $bahagian,
                     'gred' => $gred,
@@ -180,7 +180,7 @@ try {
             <div class="modal-footer bg-light">
                 <form method="POST" action="proses_staf.php" class="w-100 d-flex justify-content-end">
                     <?php echo getCsrfTokenField(); // CSRF Protection ?>
-                    <input type="hidden" name="id_staf_wish" id="inputIdStafWish">
+                    <input type="hidden" name="id_user_wish" id="inputIdUserWish">
                     
                     <button type="submit" name="send_wish" class="btn btn-success btn-sm">
                         <i class="fas fa-birthday-cake me-2"></i> Hantar Ucapan
@@ -250,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('modalUmur').textContent = age;
             
             // MASUKKAN ID KE DALAM FORM
-            document.getElementById('inputIdStafWish').value = p.id_staf;
+            document.getElementById('inputIdUserWish').value = p.id_user;
 
             var myModal = new bootstrap.Modal(document.getElementById('eventModal'));
             myModal.show();

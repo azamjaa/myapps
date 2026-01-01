@@ -162,7 +162,7 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch, $currentKat
             <i class="fas fa-list me-2 text-primary"></i> Direktori Aplikasi
         </h3>
         <div class="d-flex gap-2">
-            <?php if($_SESSION['role'] === 'admin'): ?>
+            <?php if($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'super_admin'): ?>
                 <a href="proses_aplikasi.php" class="btn btn-primary">
                     <i class="fas fa-plus me-2"></i> Tambah Aplikasi
                 </a>
@@ -248,7 +248,7 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch, $currentKat
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-end px-3" style="opacity: 1 !important; pointer-events: auto; position: relative; z-index: 10;">
-                                    <?php if($_SESSION['role'] === 'admin'): ?>
+                                    <?php if($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'super_admin'): ?>
                                         <a href="proses_aplikasi.php?id=<?php echo $row['id_aplikasi']; ?>" class="btn btn-sm btn-warning" title="Edit" style="pointer-events: auto;"><i class="fas fa-edit"></i></a>
                                     <?php endif; ?>
                                 </td>

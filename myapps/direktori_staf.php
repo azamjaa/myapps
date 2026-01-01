@@ -11,7 +11,7 @@ $my_id  = $_SESSION['user_id'];
 if (isset($_GET['export'])) {
     if (ob_get_length()) ob_end_clean();
 
-    $filename = "Direktori_Staf_MyApps_" . date('Ymd') . ".xls";
+    $filename = "Direktori_Users_MyApps_" . date('Ymd') . ".xls";
 
     header("Content-Type: application/vnd.ms-excel");
     header("Content-Disposition: attachment; filename=\"$filename\"");
@@ -39,16 +39,15 @@ if (isset($_GET['export'])) {
     
     // QUERY EXPORT
     // Nota: Untuk Export, saya benarkan download SEMUA juga supaya selari dengan paparan direktori
-    $sqlExport = "SELECT s.nama, s.emel, 
-                         j.jawatan, j.skim, g.gred, b.bahagian 
-                  FROM staf s 
-                  LEFT JOIN jawatan j ON s.id_jawatan = j.id_jawatan
-                  LEFT JOIN gred g ON s.id_gred = g.id_gred
-                  LEFT JOIN bahagian b ON s.id_bahagian = b.id_bahagian
-                  WHERE s.id_status = 1
-                  ORDER BY s.nama ASC";
-                  
-    $stmt = $db->query($sqlExport);
+        $sqlExport = "SELECT u.nama, u.email, 
+                    j.jawatan, j.skim, g.gred, b.bahagian 
+                FROM users u 
+                LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan
+                LEFT JOIN gred g ON u.id_gred = g.id_gred
+                LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
+                WHERE u.id_status = 1
+                ORDER BY u.name ASC";
+        $stmt = $db->query($sqlExport);
     
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         echo '<tr>';
@@ -57,7 +56,7 @@ if (isset($_GET['export'])) {
         echo '<td style="text-align:center;">' . htmlspecialchars($row['skim'] ?? '') . '</td>';
         echo '<td style="text-align:center;">' . htmlspecialchars($row['gred'] ?? '') . '</td>';
         echo '<td>' . htmlspecialchars($row['bahagian'] ?? '') . '</td>';
-        echo '<td>' . htmlspecialchars($row['emel'] ?? '') . '</td>';
+        echo '<td>' . htmlspecialchars($row['email'] ?? '') . '</td>';
         echo '</tr>';
     }
     echo '</table></body></html>';
@@ -74,21 +73,22 @@ $sort   = $_GET['sort'] ?? 'nama';
 $order  = $_GET['order'] ?? 'ASC';
 $page   = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 
-$allowed_sort = ['no_staf', 'nama', 'jawatan', 'skim', 'gred', 'bahagian'];
+$allowed_sort = ['no_kp', 'name', 'jawatan', 'skim', 'gred', 'bahagian'];
 if (!in_array($sort, $allowed_sort)) { $sort = 'nama'; }
 
 $items_per_page = 20; // Items per halaman
 $offset = ($page - 1) * $items_per_page;
 
 // QUERY UNTUK HITUNG JUMLAH REKOD
-$sqlCount = "SELECT COUNT(*) as total FROM staf s 
-             LEFT JOIN jawatan j ON s.id_jawatan = j.id_jawatan
-             LEFT JOIN gred g ON s.id_gred = g.id_gred
-             LEFT JOIN bahagian b ON s.id_bahagian = b.id_bahagian
-             WHERE s.id_status = 1 
+
+$sqlCount = "SELECT COUNT(*) as total FROM users u 
+             LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan
+             LEFT JOIN gred g ON u.id_gred = g.id_gred
+             LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
+             WHERE u.id_status = 1 
              AND (
-                s.nama LIKE ? OR 
-                s.no_staf LIKE ? OR 
+                u.nama LIKE ? OR 
+                u.no_kp LIKE ? OR 
                 j.jawatan LIKE ? OR 
                 j.skim LIKE ? OR 
                 b.bahagian LIKE ? OR 
@@ -109,19 +109,24 @@ if ($page > $total_pages && $total_pages > 0) {
 }
 
 // QUERY UTAMA (View) - DENGAN PAGINATION
-$sql = "SELECT s.*, j.jawatan, j.skim, g.gred, b.bahagian 
-        FROM staf s 
-        LEFT JOIN jawatan j ON s.id_jawatan = j.id_jawatan
-        LEFT JOIN gred g ON s.id_gred = g.id_gred
-        LEFT JOIN bahagian b ON s.id_bahagian = b.id_bahagian
-        WHERE s.id_status = 1 ";
+// QUERY UTAMA (View) - DENGAN PAGINATION
+
+
+$sql = "SELECT u.*, j.jawatan, j.skim, g.gred, b.bahagian 
+    FROM users u 
+    LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan
+    LEFT JOIN gred g ON u.id_gred = g.id_gred
+    LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
+    WHERE u.id_status = 1 ";
 
 // NOTA: Saya BUANG filter 'WHERE id_staf = my_id' supaya user boleh tengok semua orang.
 // Filter hanya berlaku pada butang Edit di bawah.
 
+
+
 $sql .= " AND (
-            s.nama LIKE ? OR 
-            s.no_staf LIKE ? OR 
+            u.nama LIKE ? OR 
+            u.no_kp LIKE ? OR 
             j.jawatan LIKE ? OR 
             j.skim LIKE ? OR 
             b.bahagian LIKE ? OR 
@@ -158,13 +163,15 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
             if($role == 'admin' || $role == 'super_admin') {
                 $showAddBtn = true;
             } else {
-                // Check akses table for admin level
-                $adminCheckStmt = $db->prepare("SELECT COUNT(*) as admin_count FROM akses WHERE id_staf = ? AND id_level = 3");
+                // Check user_roles table for admin/super_admin role
+                $adminCheckStmt = $db->prepare("SELECT COUNT(*) as admin_count FROM user_roles ur 
+                                                JOIN roles r ON ur.id_role = r.id_role 
+                                                WHERE ur.id_user = ? AND r.name IN ('admin', 'super_admin')");
                 $adminCheckStmt->execute([$my_id]);
                 $showAddBtn = $adminCheckStmt->fetch()['admin_count'] > 0;
             }
             
-            if($showAddBtn): 
+            if($showAddBtn):
             ?>
                 <a href="proses_staf.php?mode=add" class="btn btn-primary shadow-sm"><i class="fas fa-plus"></i> Tambah Staf</a>
             <?php endif; ?>
@@ -233,9 +240,11 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
                                     if ($role == 'admin' || $role == 'super_admin') {
                                         $can_edit = true;
                                     }
-                                    // 2. Check akses table - if id_level 3 (admin), boleh edit semua
+                                    // 2. Check user_roles table - if admin/super_admin, boleh edit semua
                                     else {
-                                        $adminCheckStmt = $db->prepare("SELECT COUNT(*) as admin_count FROM akses WHERE id_staf = ? AND id_level = 3");
+                                        $adminCheckStmt = $db->prepare("SELECT COUNT(*) as admin_count FROM user_roles ur 
+                                                                        JOIN roles r ON ur.id_role = r.id_role 
+                                                                        WHERE ur.id_user = ? AND r.name IN ('admin', 'super_admin')");
                                         $adminCheckStmt->execute([$my_id]);
                                         $isAdmin = $adminCheckStmt->fetch()['admin_count'] > 0;
                                         
@@ -243,14 +252,14 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
                                             $can_edit = true;
                                         }
                                         // 3. User hanya boleh edit DIRI SENDIRI
-                                        elseif ($row['id_staf'] == $my_id) {
+                                        elseif ($row['id_user'] == $my_id) {
                                             $can_edit = true;
                                         }
                                     }
                                     ?>
 
                                     <?php if($can_edit): ?>
-                                        <a href="proses_staf.php?id=<?php echo $row['id_staf']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
+                                        <a href="proses_staf.php?id=<?php echo $row['id_user']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
                                     <?php else: ?>
                                         <button class="btn btn-sm btn-light text-muted" disabled title="Tiada Akses"><i class="fas fa-lock"></i></button>
                                     <?php endif; ?>

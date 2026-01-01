@@ -12,8 +12,10 @@ if (isset($_POST['save_new'])) {
     if ($_SESSION['role'] == 'admin' || $_SESSION['role'] == 'super_admin') {
         $has_admin_access = true;
     } else {
-        // Check akses table for id_level 3 (admin)
-        $checkAdmin = $db->prepare("SELECT COUNT(*) as cnt FROM akses WHERE id_staf = ? AND id_level = 3");
+        // Check user_roles table for admin or super_admin role
+        $checkAdmin = $db->prepare("SELECT COUNT(*) as cnt FROM user_roles ur 
+                                    JOIN roles r ON ur.id_role = r.id_role 
+                                    WHERE ur.id_user = ? AND r.name IN ('admin', 'super_admin')");
         $checkAdmin->execute([$_SESSION['user_id']]);
         $has_admin_access = $checkAdmin->fetch()['cnt'] > 0;
     }
@@ -30,8 +32,8 @@ if (isset($_POST['save_new'])) {
             $gambar = uploadGambar($_FILES['gambar']);
         }
 
-        $sql = "INSERT INTO staf (no_staf, no_kp, nama, emel, telefon, id_jawatan, id_gred, id_bahagian, gambar, id_status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
+        $sql = "INSERT INTO users (no_staf, no_kp, nama, emel, telefon, id_jawatan, id_gred, id_bahagian, gambar, id_status) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
         $stmt = $db->prepare($sql);
         $stmt->execute([
             $_POST['no_staf'], $_POST['no_kp'], strtoupper($_POST['nama']), 
@@ -41,7 +43,7 @@ if (isset($_POST['save_new'])) {
         
         $new_id = $db->lastInsertId();
         $default_hash = password_hash('123456', PASSWORD_DEFAULT);
-        $db->prepare("INSERT INTO login (id_staf, password_hash) VALUES (?, ?)")->execute([$new_id, $default_hash]);
+        $db->prepare("INSERT INTO login (id_user, password_hash) VALUES (?, ?)")->execute([$new_id, $default_hash]);
 
         $db->commit();
         echo "<script>alert('Berjaya ditambah!'); window.location='direktori_staf.php';</script>";
@@ -55,11 +57,13 @@ if (isset($_POST['save_new'])) {
 if (isset($_POST['update'])) {
     verifyCsrfToken(); // CSRF Protection
     
-    $id = $_POST['id_staf'];
+    $id = $_POST['id_user'];
     $role = $_SESSION['role'];
     
-    // Check if user is admin via akses table
-    $checkAdmin = $db->prepare("SELECT COUNT(*) as cnt FROM akses WHERE id_staf = ? AND id_level = 3");
+    // Check if user is admin via user_roles table
+    $checkAdmin = $db->prepare("SELECT COUNT(*) as cnt FROM user_roles ur 
+                                JOIN roles r ON ur.id_role = r.id_role 
+                                WHERE ur.id_user = ? AND r.name IN ('admin', 'super_admin')");
     $checkAdmin->execute([$_SESSION['user_id']]);
     $is_admin_via_akses = $checkAdmin->fetch()['cnt'] > 0;
     
@@ -78,10 +82,10 @@ if (isset($_POST['update'])) {
         }
 
         if (!$is_admin) {
-            $sql = "UPDATE staf SET emel=?, telefon=?, id_gred=?, id_bahagian=? $sql_gambar WHERE id_staf=?";
+            $sql = "UPDATE users SET emel=?, telefon=?, id_gred=?, id_bahagian=? $sql_gambar WHERE id_user=?";
             $params = [$_POST['emel'], $_POST['telefon'], $_POST['id_gred'], $_POST['id_bahagian']];
         } else {
-            $sql = "UPDATE staf SET no_staf=?, no_kp=?, nama=?, emel=?, telefon=?, id_jawatan=?, id_gred=?, id_bahagian=? $sql_gambar WHERE id_staf=?";
+            $sql = "UPDATE users SET no_staf=?, no_kp=?, nama=?, emel=?, telefon=?, id_jawatan=?, id_gred=?, id_bahagian=? $sql_gambar WHERE id_user=?";
             $params = [$_POST['no_staf'], $_POST['no_kp'], strtoupper($_POST['nama']), $_POST['emel'], $_POST['telefon'], $_POST['id_jawatan'], $_POST['id_gred'], $_POST['id_bahagian']];
         }
 
@@ -107,10 +111,10 @@ if (isset($_POST['update'])) {
 if (isset($_POST['send_wish'])) {
     verifyCsrfToken(); // CSRF Protection
     
-    $id_target = $_POST['id_staf_wish']; // Ambil ID dari form
+    $id_target = $_POST['id_user_wish']; // Ambil ID dari form
 
     // Cari staf guna ID (Lebih Tepat)
-    $stmt = $db->prepare("SELECT nama, emel, no_kp FROM staf WHERE id_staf = ?");
+    $stmt = $db->prepare("SELECT nama, emel, no_kp FROM users WHERE id_user = ?");
     $stmt->execute([$id_target]);
     $target = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -172,7 +176,7 @@ $listBahagian = $db->query("SELECT * FROM bahagian ORDER BY bahagian ASC")->fetc
 
 $stafData = [];
 if (isset($_GET['id'])) {
-    $stmt = $db->prepare("SELECT * FROM staf WHERE id_staf = ?");
+    $stmt = $db->prepare("SELECT * FROM users WHERE id_user = ?");
     $stmt->execute([$_GET['id']]);
     $stafData = $stmt->fetch(PDO::FETCH_ASSOC);
     $title = "Kemaskini Profil"; $btnName = "update";
@@ -195,8 +199,8 @@ $disabledJawatan = ($currentUserRole == 'user') ? 'disabled' : '';
                 <div class="card-body p-4">
                     <form method="POST" enctype="multipart/form-data">
                         <?php echo getCsrfTokenField(); // CSRF Protection ?>
-                        <?php if(isset($stafData['id_staf'])): ?>
-                            <input type="hidden" name="id_staf" value="<?php echo $stafData['id_staf']; ?>">
+                        <?php if(isset($stafData['id_user'])): ?>
+                            <input type="hidden" name="id_user" value="<?php echo $stafData['id_user']; ?>">
                         <?php endif; ?>
 
                         <div class="row mb-4 align-items-center">

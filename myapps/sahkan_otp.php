@@ -13,21 +13,21 @@ if (isset($_POST['verify_otp'])) {
     verifyCsrfToken(); // CSRF Protection
     
     $otp_input = $_POST['otp'];
-    $id_staf = $_SESSION['temp_id'];
+    $id_user = $_SESSION['temp_id'];
 
     // Semak OTP Valid & Belum Expired
-    $stmt = $db->prepare("SELECT * FROM login WHERE id_staf = ? AND otp_code = ? AND otp_expiry > NOW()");
-    $stmt->execute([$id_staf, $otp_input]);
+    $stmt = $db->prepare("SELECT * FROM login WHERE id_user = ? AND otp_code = ? AND otp_expiry > NOW()");
+    $stmt->execute([$id_user, $otp_input]);
     $check = $stmt->fetch();
 
     if ($check) {
         // OTP Betul! Pindahkan session sementara ke session sebenar
-        $_SESSION['user_id'] = $id_staf;
+        $_SESSION['user_id'] = $id_user;
         $_SESSION['nama'] = $_SESSION['temp_nama'];
         $_SESSION['role'] = $_SESSION['temp_role'];
         
         // Padam OTP dari database (supaya tak boleh guna semula)
-        $db->prepare("UPDATE login SET otp_code = NULL, otp_expiry = NULL WHERE id_staf = ?")->execute([$id_staf]);
+        $db->prepare("UPDATE login SET otp_code = NULL, otp_expiry = NULL WHERE id_user = ?")->execute([$id_user]);
 
         // Buang session sementara
         unset($_SESSION['temp_id']);

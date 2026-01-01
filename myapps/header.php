@@ -17,6 +17,24 @@ header("Expires: 0");
 
 // 3. SAMBUNG DB
 require_once 'db.php';
+
+// Pastikan Azam sudah ada session user_id
+$current_user = isset($_SESSION['id_user']) ? $_SESSION['id_user'] : null;
+$this_app_id = 12; // Contoh: ID untuk MyApps
+
+// Sidebar aplikasi dinamik berdasarkan akses RBAC
+$sidebarApps = [];
+if ($current_user) {
+    $sql = "SELECT a.id_aplikasi, a.nama_aplikasi, a.icon, a.url
+            FROM aplikasi a
+            JOIN application_access aa ON a.id_aplikasi = aa.id_aplikasi
+            JOIN user_roles ur ON aa.id_role = ur.id_role
+            WHERE ur.id_user = ?
+            ORDER BY a.nama_aplikasi ASC";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$current_user]);
+    $sidebarApps = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
 ?>
 <!DOCTYPE html>
 <html lang="ms">
@@ -353,6 +371,11 @@ require_once 'db.php';
         <a href="manual.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='manual.php'?'active':''; ?>">
             <i class="fas fa-book-open"></i> Manual Pengguna
         </a>
+        <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'super_admin'): ?>
+        <a href="rbac_management.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='rbac_management.php'?'active':''; ?>">
+            <i class="fas fa-user-shield"></i> RBAC Management
+        </a>
+        <?php endif; ?>
     </div>
 
     <!-- Actions -->
@@ -360,6 +383,20 @@ require_once 'db.php';
         <a href="logout.php" class="btn btn-danger w-100 btn-sm">
             <i class="fas fa-sign-out-alt me-1"></i> Keluar
         </a>
+    </div>
+
+    <!-- Sidebar aplikasi dinamik berdasarkan akses RBAC -->
+    <div class="py-2">
+        <ul class="app-list">
+            <?php foreach ($sidebarApps as $app): ?>
+                <li>
+                    <a href="<?php echo htmlspecialchars($app['url']); ?>" title="<?php echo htmlspecialchars($app['nama_aplikasi']); ?>">
+                        <img src="<?php echo htmlspecialchars($app['icon']); ?>" alt="<?php echo htmlspecialchars($app['nama_aplikasi']); ?>" style="width:32px;height:32px;">
+                        <span><?php echo htmlspecialchars($app['nama_aplikasi']); ?></span>
+                    </a>
+                </li>
+            <?php endforeach; ?>
+        </ul>
     </div>
 </nav>
 

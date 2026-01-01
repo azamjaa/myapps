@@ -7,13 +7,12 @@ if (!isset($_SESSION['temp_id'])) {
     exit();
 }
 
-// Tarik data user (Nama, Emel, Level) guna temp_id
-// Sebab sebelum ni dalam session cuma ada temp_id je
-$stmtInfo = $db->prepare("SELECT s.nama, s.emel, a.level, l.password_hash 
-                           FROM staf s 
-                           JOIN login l ON s.id_staf = l.id_staf 
-                           LEFT JOIN akses a ON s.id_staf = a.id_staf AND a.id_aplikasi = 1 
-                           WHERE s.id_staf = ?");
+// Tarik data user (Nama, Emel, Role) guna temp_id
+$stmtInfo = $db->prepare("SELECT u.name, u.email, ur.id_role, l.password_hash 
+                           FROM users u 
+                           JOIN login l ON u.id_user = l.id_user 
+                           LEFT JOIN user_roles ur ON u.id_user = ur.id_user AND ur.id_aplikasi = 1 
+                           WHERE u.id_user = ?");
 $stmtInfo->execute([$_SESSION['temp_id']]);
 $userInfo = $stmtInfo->fetch(PDO::FETCH_ASSOC);
 
@@ -39,24 +38,24 @@ if (isset($_POST['change_pass'])) {
         
         // A. Update Password
         $hash = password_hash($new_pass, PASSWORD_DEFAULT);
-        $stmt = $db->prepare("UPDATE login SET password_hash = ?, tarikh_tukar_katalaluan = NOW() WHERE id_staf = ?");
+        $stmt = $db->prepare("UPDATE login SET password_hash = ?, tarikh_tukar_katalaluan = NOW() WHERE id_user = ?");
         $stmt->execute([$hash, $_SESSION['temp_id']]);
 
         // B. JANA OTP TERUS
         $otp = rand(100000, 999999);
-        $db->prepare("UPDATE login SET otp_code = ?, otp_expiry = DATE_ADD(NOW(), INTERVAL 5 MINUTE) WHERE id_staf = ?")->execute([$otp, $_SESSION['temp_id']]);
+        $db->prepare("UPDATE login SET otp_code = ?, otp_expiry = DATE_ADD(NOW(), INTERVAL 5 MINUTE) WHERE id_user = ?")->execute([$otp, $_SESSION['temp_id']]);
 
         // C. Hantar Emel OTP
         $subjek = "Kod OTP - MyApps KEDA";
-        $mesej  = "<h3>Hai {$userInfo['nama']},</h3>";
+        $mesej  = "<h3>Hai {$userInfo['name']},</h3>";
         $mesej .= "<p>Kata laluan anda berjaya dikemaskini.</p>";
         $mesej .= "<p>Kod OTP anda ialah:</p>";
         $mesej .= "<h1 style='color:#d32f2f; letter-spacing:5px;'>$otp</h1>";
 
-        if (hantarEmel($userInfo['emel'], $subjek, $mesej)) {
+        if (hantarEmel($userInfo['email'], $subjek, $mesej)) {
             // D. Kemaskini Session Info & Redirect
-            $_SESSION['temp_nama'] = $userInfo['nama'];
-            $_SESSION['temp_role'] = ($userInfo['level'] == 'admin') ? 'admin' : 'user';
+            $_SESSION['temp_nama'] = $userInfo['name'];
+            $_SESSION['temp_role'] = ($userInfo['id_role'] == 1) ? 'admin' : 'user';
             
             echo "<script>alert('Kata laluan berjaya dikemaskini! Sila masukkan kod OTP.'); window.location='sahkan_otp.php';</script>";
             exit();
