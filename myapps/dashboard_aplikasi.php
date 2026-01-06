@@ -787,3 +787,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 </body>
 </html>
+
+<?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'view_dashboard')): ?>
+<!-- Paparan dashboard aplikasi di sini -->
+<?php endif; ?>

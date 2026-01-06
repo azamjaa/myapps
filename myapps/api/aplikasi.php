@@ -209,29 +209,25 @@ class AplikasiAPI extends API {
      */
     private function handleDelete() {
         $this->validateRequired(['id']);
-        
         try {
             $id = $this->getData('id');
-            
             // Check if application exists
             $checkSql = "SELECT nama_sistem FROM aplikasi WHERE id = ?";
             $checkStmt = $this->db->prepare($checkSql);
             $checkStmt->execute([$id]);
             $app = $checkStmt->fetch(PDO::FETCH_ASSOC);
-            
             if (!$app) {
                 $this->sendResponse(404, false, 'Application not found');
             }
-            
-            $sql = "DELETE FROM aplikasi WHERE id = ?";
+            // Soft delete: set is_deleted=1
+            $sql = "UPDATE aplikasi SET is_deleted = 1 WHERE id = ?";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$id]);
-            
-            $this->logActivity('DELETE_APPLICATION', ['app_id' => $id, 'name' => $app['nama_sistem']]);
-            $this->sendResponse(200, true, 'Application deleted successfully');
+            $this->logActivity('SOFT_DELETE_APPLICATION', ['app_id' => $id, 'name' => $app['nama_sistem']]);
+            $this->sendResponse(200, true, 'Application soft deleted successfully');
         } catch (Exception $e) {
             error_log("Application API Error: " . $e->getMessage());
-            $this->sendResponse(500, false, 'Failed to delete application');
+            $this->sendResponse(500, false, 'Failed to soft delete application');
         }
     }
 }

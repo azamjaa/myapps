@@ -101,6 +101,11 @@ if ($current_user) {
             overflow-y: auto;
             transition: all 0.3s ease;
         }
+        
+        .sidebar.hidden {
+            transform: translateX(-100%);
+            width: 260px;
+        }
 
         /* CONTENT AREA */
         .main-content {
@@ -109,6 +114,11 @@ if ($current_user) {
             transition: all 0.3s ease;
             min-height: 100vh;
             width: calc(100% - 260px);
+        }
+        
+        .main-content.expanded {
+            margin-left: 0;
+            width: 100%;
         }
 
         /* NAV ITEMS */
@@ -225,9 +235,55 @@ if ($current_user) {
         }
         
         /* CHATBOT */
-        #mawarWrapper { position: fixed; bottom: 10px; right: 30px; z-index: 9999; }
-        .chat-mascot-container { width: 80px; height: 80px; cursor: pointer; transition: transform 0.3s; }
+        #mawarWrapper { position: fixed; bottom: 10px; right: 30px; z-index: 9999; transition: all 0.3s ease; }
+        
+        /* Expanded state */
+        #mawarWrapper:not(.collapsed) { width: auto; height: auto; }
+        #mawarWrapper:not(.collapsed) .chat-mascot-container { width: 80px; height: 80px; }
+        #mawarWrapper:not(.collapsed) .mawar-label { opacity: 1; visibility: visible; }
+        #mawarWrapper:not(.collapsed) .chat-bubble { opacity: 1; visibility: visible; }
+        
+        /* Collapsed state */
+        #mawarWrapper.collapsed { width: 50px; height: 50px; }
+        #mawarWrapper.collapsed .chat-mascot-container { width: 50px; height: 50px; }
+        #mawarWrapper.collapsed .mawar-label { opacity: 0; visibility: hidden; }
+        #mawarWrapper.collapsed .chat-bubble { opacity: 0; visibility: hidden; }
+        #mawarWrapper.collapsed .chat-box { display: none !important; }
+        
+        .chat-mascot-container { cursor: pointer; transition: all 0.3s; position: relative; }
         .chat-mascot-container:hover { transform: scale(1.1); }
+        .mawar-label { 
+            position: absolute; 
+            bottom: -25px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            white-space: nowrap; 
+            font-size: 11px; 
+            color: #666;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .collapse-mawar-btn { 
+            position: absolute; 
+            top: -8px; 
+            right: -8px; 
+            width: 24px; 
+            height: 24px; 
+            background: #dc3545; 
+            color: white; 
+            border: none; 
+            border-radius: 50%; 
+            cursor: pointer; 
+            font-size: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: all 0.2s;
+            opacity: 0;
+            z-index: 10;
+        }
+        .chat-mascot-container:hover .collapse-mawar-btn { opacity: 1; }
+        .collapse-mawar-btn:hover { background: #b71c1c; transform: scale(1.2); }
         .chat-bubble { 
             position: absolute; 
             bottom: 90px; 
@@ -254,6 +310,18 @@ if ($current_user) {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-5px); }
         }
+        .ai-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            vertical-align: middle;
+            border: 2.5px solid #dc3545;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         /* Chat Box */
         .chat-box { 
             position: fixed; 
@@ -278,7 +346,6 @@ if ($current_user) {
                 min-width: 0 !important;
                 border-radius: 12px;
             }
-        }
         }
         
         /* Chat Header - Fixed */
@@ -373,7 +440,7 @@ if ($current_user) {
         </a>
         <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'super_admin'): ?>
         <a href="rbac_management.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='rbac_management.php'?'active':''; ?>">
-            <i class="fas fa-user-shield"></i> RBAC Management
+            <i class="fas fa-user-shield"></i> Pengurusan RBAC
         </a>
         <?php endif; ?>
     </div>
@@ -411,7 +478,12 @@ if ($current_user) {
 
     <!-- Desktop Top Bar -->
     <div class="d-none d-md-flex bg-white p-3 mb-4 shadow-sm rounded justify-content-between align-items-center">
-        <h5 class="mb-0 fw-bold text-secondary">MyApps KEDA</h5>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-light btn-sm" id="toggleSidebarBtn" onclick="toggleSidebarDesktop()" title="Hide/Show Menu">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h5 class="mb-0 fw-bold text-secondary">MyApps KEDA</h5>
+        </div>
         <div class="d-flex gap-2">
             <!-- PWA Install Button -->
             <button id="pwa-install-btn" onclick="installPWA()" class="btn btn-success btn-sm rounded-pill hidden">
@@ -434,9 +506,12 @@ if ($current_user) {
         </div>
         <div class="chat-mascot-container" onclick="toggleChat()">
             <img src="image/mawar.png" class="w-100 h-100 rounded-circle border border-danger border-3 shadow bg-white" style="object-fit: cover;">
+            <button class="collapse-mawar-btn" onclick="collapseMawar(event)" title="Collapse Mawar">
+                <i class="fas fa-minus"></i>
+            </button>
+            <div class="mawar-label">Mawar</div>
         </div>
     </div>
-        </script>
 </div>
 <div class="chat-box" id="chatBox">
     <div class="p-3 text-white d-flex align-items-center" style="background: linear-gradient(135deg, #dc3545, #c82333);">
@@ -471,7 +546,78 @@ function toggleSidebar() {
     overlay.classList.toggle('d-none');
 }
 
+function toggleSidebarDesktop() {
+    var sidebar = document.getElementById('sidebar');
+    var mainContent = document.querySelector('.main-content');
+    
+    sidebar.classList.toggle('hidden');
+    mainContent.classList.toggle('expanded');
+    
+    // Save preference to localStorage
+    var isHidden = sidebar.classList.contains('hidden');
+    localStorage.setItem('sidebarHidden', isHidden ? 'true' : 'false');
+    
+    // Update button icon
+    var btn = document.getElementById('toggleSidebarBtn');
+    if(isHidden) {
+        btn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        btn.title = 'Show Menu';
+    } else {
+        btn.innerHTML = '<i class="fas fa-bars"></i>';
+        btn.title = 'Hide Menu';
+    }
+}
+
+// Load sidebar preference from localStorage
+document.addEventListener('DOMContentLoaded', function() {
+    var sidebarHidden = localStorage.getItem('sidebarHidden') === 'true';
+    if(sidebarHidden) {
+        var sidebar = document.getElementById('sidebar');
+        var mainContent = document.querySelector('.main-content');
+        sidebar.classList.add('hidden');
+        mainContent.classList.add('expanded');
+        
+        var btn = document.getElementById('toggleSidebarBtn');
+        if(btn) {
+            btn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+            btn.title = 'Show Menu';
+        }
+    }
+});
+
+function collapseMawar(event) {
+    event.stopPropagation(); // Prevent triggering toggleChat
+    var wrapper = document.getElementById('mawarWrapper');
+    wrapper.classList.toggle('collapsed');
+    
+    // Save preference to localStorage
+    var isCollapsed = wrapper.classList.contains('collapsed');
+    localStorage.setItem('mawarCollapsed', isCollapsed ? 'true' : 'false');
+    
+    // Close chat box if collapsing
+    if(isCollapsed) {
+        var chatBox = document.getElementById('chatBox');
+        chatBox.style.display = 'none';
+    }
+}
+
+// Load mawar preference from localStorage
+document.addEventListener('DOMContentLoaded', function() {
+    var mawarCollapsed = localStorage.getItem('mawarCollapsed') === 'true';
+    if(mawarCollapsed) {
+        var wrapper = document.getElementById('mawarWrapper');
+        wrapper.classList.add('collapsed');
+    }
+});
+
 function toggleChat() {
+    // If Mawar is collapsed, expand it first
+    var wrapper = document.getElementById('mawarWrapper');
+    if(wrapper.classList.contains('collapsed')) {
+        wrapper.classList.remove('collapsed');
+        localStorage.setItem('mawarCollapsed', 'false');
+    }
+    
     var box = document.getElementById('chatBox');
     box.style.display = (box.style.display === 'none' || box.style.display === '') ? 'flex' : 'none';
     if(box.style.display === 'flex') document.getElementById('chatInput').focus();
@@ -495,14 +641,24 @@ function hantarMesej() {
 
     var formData = new FormData();
     formData.append('mesej', msg);
+    // Papar status sementara supaya pengguna tahu sistem sedang memproses
+    var thinkingDiv = document.createElement('div');
+    thinkingDiv.className = "bg-white p-2 rounded shadow-sm mb-2 border-start border-warning border-4 text-muted d-flex align-items-center";
+    thinkingDiv.style.maxWidth = "80%";
+    thinkingDiv.innerHTML = '<span class="ai-spinner"></span><span>Mawar sedang berfikir...</span>';
+    body.appendChild(thinkingDiv);
+    body.scrollTop = body.scrollHeight;
+
     fetch('chatbot_ajax.php', { method: 'POST', body: formData })
     .then(r => r.text())
     .then(data => {
-        var botDiv = document.createElement('div');
-        botDiv.className = "bg-white p-2 rounded shadow-sm mb-2 border-start border-danger border-4";
-        botDiv.style.maxWidth = "80%";
-        botDiv.innerHTML = data;
-        body.appendChild(botDiv);
+        thinkingDiv.className = "bg-white p-2 rounded shadow-sm mb-2 border-start border-danger border-4";
+        thinkingDiv.innerHTML = data;
+        body.scrollTop = body.scrollHeight;
+    })
+    .catch(() => {
+        thinkingDiv.className = "bg-white p-2 rounded shadow-sm mb-2 border-start border-danger border-4";
+        thinkingDiv.textContent = "Tidak dapat menghubungi chatbot. Sila semak sambungan anda.";
         body.scrollTop = body.scrollHeight;
     });
 }

@@ -6,22 +6,12 @@ require 'fungsi_emel.php';
 if (isset($_POST['save_new'])) {
     verifyCsrfToken(); // CSRF Protection
     
-    $has_admin_access = false;
+    // Check RBAC permission for Create User (permission id 1 untuk MyApps direktori)
+    // Guna hasAccess() function dari db.php
+    $has_create_permission = hasAccess($pdo, $_SESSION['user_id'], 1, 'create_user');
     
-    // Check role first
-    if ($_SESSION['role'] == 'admin' || $_SESSION['role'] == 'super_admin') {
-        $has_admin_access = true;
-    } else {
-        // Check user_roles table for admin or super_admin role
-        $checkAdmin = $db->prepare("SELECT COUNT(*) as cnt FROM user_roles ur 
-                                    JOIN roles r ON ur.id_role = r.id_role 
-                                    WHERE ur.id_user = ? AND r.name IN ('admin', 'super_admin')");
-        $checkAdmin->execute([$_SESSION['user_id']]);
-        $has_admin_access = $checkAdmin->fetch()['cnt'] > 0;
-    }
-    
-    if (!$has_admin_access) {
-        echo "<script>alert('Anda tiada kebenaran menambah staf.'); window.location='direktori_staf.php';</script>"; exit();
+    if (!$has_create_permission) {
+        echo "<script>alert('⛔ Anda Tidak Dibenarkan Akses Halaman Ini.\n\nHubungi admin untuk mendapat akses.'); window.location='direktori_staf.php';</script>"; exit();
     }
     try {
         $db->beginTransaction();
@@ -32,7 +22,7 @@ if (isset($_POST['save_new'])) {
             $gambar = uploadGambar($_FILES['gambar']);
         }
 
-        $sql = "INSERT INTO users (no_staf, no_kp, nama, emel, telefon, id_jawatan, id_gred, id_bahagian, gambar, id_status) 
+        $sql = "INSERT INTO users (no_staf, no_kp, nama, emel, telefon, id_jawatan, id_gred, id_bahagian, gambar, id_status_staf) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
         $stmt = $db->prepare($sql);
         $stmt->execute([
@@ -58,16 +48,16 @@ if (isset($_POST['update'])) {
     verifyCsrfToken(); // CSRF Protection
     
     $id = $_POST['id_user'];
-    $role = $_SESSION['role'];
     
-    // Check if user is admin via user_roles table
-    $checkAdmin = $db->prepare("SELECT COUNT(*) as cnt FROM user_roles ur 
-                                JOIN roles r ON ur.id_role = r.id_role 
-                                WHERE ur.id_user = ? AND r.name IN ('admin', 'super_admin')");
-    $checkAdmin->execute([$_SESSION['user_id']]);
-    $is_admin_via_akses = $checkAdmin->fetch()['cnt'] > 0;
+    // Check RBAC permission - admin boleh edit semua field, user biasa edit field terhad sahaja
+    $has_edit_user_permission = hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_user');
+    $is_own_profile = ($id == $_SESSION['user_id']);
     
-    $is_admin = ($role == 'admin' || $role == 'super_admin' || $is_admin_via_akses);
+    // User biasa boleh edit profil sendiri sahaja (field terhad)
+    // Admin/Super Admin boleh edit sesiapa (full access)
+    if (!$has_edit_user_permission && !$is_own_profile) {
+        echo "<script>alert('⛔ Anda Tidak Dibenarkan Akses Halaman Ini.\n\nAnda hanya boleh edit profil sendiri.'); window.location='direktori_staf.php';</script>"; exit();
+    }
 
     try {
         $sql_gambar = "";
@@ -81,12 +71,14 @@ if (isset($_POST['update'])) {
             }
         }
 
-        if (!$is_admin) {
+        if (!$has_edit_user_permission) {
+            // User biasa - edit field terhad sahaja (emel, telefon, gred, bahagian)
             $sql = "UPDATE users SET emel=?, telefon=?, id_gred=?, id_bahagian=? $sql_gambar WHERE id_user=?";
             $params = [$_POST['emel'], $_POST['telefon'], $_POST['id_gred'], $_POST['id_bahagian']];
         } else {
-            $sql = "UPDATE users SET no_staf=?, no_kp=?, nama=?, emel=?, telefon=?, id_jawatan=?, id_gred=?, id_bahagian=? $sql_gambar WHERE id_user=?";
-            $params = [$_POST['no_staf'], $_POST['no_kp'], strtoupper($_POST['nama']), $_POST['emel'], $_POST['telefon'], $_POST['id_jawatan'], $_POST['id_gred'], $_POST['id_bahagian']];
+            // Admin - edit semua field termasuk status
+            $sql = "UPDATE users SET no_staf=?, no_kp=?, nama=?, emel=?, telefon=?, id_jawatan=?, id_gred=?, id_bahagian=?, id_status_staf=? $sql_gambar WHERE id_user=?";
+            $params = [$_POST['no_staf'], $_POST['no_kp'], strtoupper($_POST['nama']), $_POST['emel'], $_POST['telefon'], $_POST['id_jawatan'], $_POST['id_gred'], $_POST['id_bahagian'], $_POST['id_status_staf']];
         }
 
         if (!empty($sql_gambar)) {
@@ -103,7 +95,9 @@ if (isset($_POST['update'])) {
 
         echo "<script>alert('Maklumat dikemaskini!'); window.location='direktori_staf.php';</script>";
     } catch (Exception $e) {
-        echo "<script>alert('Gagal kemaskini.'); window.history.back();</script>";
+        $error_msg = 'Gagal kemaskini: ' . $e->getMessage();
+        echo "<script>alert('".addslashes($error_msg)."'); window.history.back();</script>";
+        error_log($error_msg);
     }
 }
 
@@ -169,10 +163,15 @@ function uploadGambar($file) {
 // ============================================================
 include 'header.php';
 
+// Check RBAC permission
+$has_create_permission = hasAccess($pdo, $_SESSION['user_id'], 1, 'create_user');
+$has_edit_user_permission = hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_user');
+
 // ... (Kod untuk paparan borang tambah/edit staf kekal di sini) ...
 $listJawatan = $db->query("SELECT * FROM jawatan ORDER BY jawatan ASC")->fetchAll();
 $listGred = $db->query("SELECT * FROM gred ORDER BY gred ASC")->fetchAll();
 $listBahagian = $db->query("SELECT * FROM bahagian ORDER BY bahagian ASC")->fetchAll();
+$listStatusStaf = $db->query("SELECT * FROM status_staf WHERE aktif = 1 ORDER BY id_status ASC")->fetchAll();
 
 $stafData = [];
 if (isset($_GET['id'])) {
@@ -261,7 +260,16 @@ $disabledJawatan = ($currentUserRole == 'user') ? 'disabled' : '';
                                     <?php endforeach; ?>
                                 </select>
                             </div>
-                        </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold small">Status Staf</label>
+                                <select name="id_status_staf" class="form-select" required <?php echo $disabledJawatan; ?>>
+                                    <option value="">-- Pilih --</option>
+                                    <?php foreach($listStatusStaf as $s): ?>
+                                        <option value="<?php echo $s['id_status']; ?>" <?php echo (isset($stafData['id_status_staf']) && $stafData['id_status_staf'] == $s['id_status']) ? 'selected' : ''; ?>><?php echo $s['nama_status']; ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if($currentUserRole == 'user'): ?><input type="hidden" name="id_status_staf" value="<?php echo $stafData['id_status_staf']; ?>"><?php endif; ?>
+                            </div>
 
                         <div class="row mb-4">
                             <div class="col-md-6">

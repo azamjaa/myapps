@@ -206,13 +206,13 @@ class API {
      */
     protected function logActivity($action, $details = null) {
         try {
-            $sql = "INSERT INTO api_log (user_id, action, details, ip_address, user_agent, created_at) 
-                    VALUES (?, ?, ?, ?, ?, NOW())";
+            $sql = "INSERT INTO audit (id_pengguna, tindakan, nama_jadual, data_baru, waktu) 
+                    VALUES (?, ?, 'api', ?, NOW())";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 $this->userId,
                 $action,
-                json_encode($details),
+                json_encode($details)
                 $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN',
                 $_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN'
             ]);

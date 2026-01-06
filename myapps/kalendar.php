@@ -16,7 +16,7 @@ $sql = "SELECT u.id_user, u.nama, u.no_kp, u.emel, u.telefon,
         LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan 
         LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
         LEFT JOIN gred g ON u.id_gred = g.id_gred
-        WHERE u.id_status = 1";
+        WHERE u.id_status_staf = 1";
 
 try {
     $stmt = $db->query($sql);
@@ -181,10 +181,11 @@ try {
                 <form method="POST" action="proses_staf.php" class="w-100 d-flex justify-content-end">
                     <?php echo getCsrfTokenField(); // CSRF Protection ?>
                     <input type="hidden" name="id_user_wish" id="inputIdUserWish">
-                    
-                    <button type="submit" name="send_wish" class="btn btn-success btn-sm">
-                        <i class="fas fa-birthday-cake me-2"></i> Hantar Ucapan
-                    </button>
+                    <?php if ($_SESSION['role'] === 'super_admin'): ?>
+                        <button type="submit" name="send_wish" class="btn btn-success btn-sm">
+                            <i class="fas fa-birthday-cake me-2"></i> Hantar Ucapan
+                        </button>
+                    <?php endif; ?>
                     <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-dismiss="modal">Tutup</button>
                 </form>
             </div>
@@ -261,3 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 </body>
 </html>
+
+<?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'export_data')): ?>
+<!-- Butang Export Excel di sini -->
+<?php endif; ?>

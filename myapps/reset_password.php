@@ -8,7 +8,7 @@ $userInfo = null;
 
 // 1. Semak Token & Tarik Data User (Nama, Emel)
 if ($token) {
-    $sql = "SELECT u.id_user, u.name, u.email, l.password_hash
+    $sql = "SELECT u.id_user, u.nama, u.emel, l.password_hash
             FROM login l
             JOIN users u ON l.id_user = u.id_user
             WHERE l.reset_token = ? AND l.reset_token_expiry > NOW()";
@@ -50,12 +50,12 @@ if (isset($_POST['change_password']) && $validToken) {
 
         // C. Hantar Emel OTP
         $subjek = "Kod OTP - MyApps KEDA";
-        $mesej  = "<h3>Hai {$userInfo['name']},</h3>";
+        $mesej  = "<h3>Hai {$userInfo['nama']},</h3>";
         $mesej .= "<p>Kata laluan anda berjaya ditukar.</p>";
         $mesej .= "<p>Untuk melengkapkan log masuk, kod OTP anda ialah:</p>";
         $mesej .= "<h1 style='color:#d32f2f; letter-spacing:5px;'>$otp</h1>";
 
-        if (hantarEmel($userInfo['email'], $subjek, $mesej)) {
+        if (hantarEmel($userInfo['emel'], $subjek, $mesej)) {
             // D. Set Session Sementara & Redirect ke Sahkan OTP
             $_SESSION['temp_id'] = $id_user;
             $_SESSION['temp_nama'] = $userInfo['name'];

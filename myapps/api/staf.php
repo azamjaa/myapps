@@ -51,7 +51,7 @@ class StafAPI extends API {
      */
     private function getStaff($id) {
         try {
-            $sql = "SELECT * FROM staf WHERE id = ?";
+            $sql = "SELECT * FROM users WHERE id_user = ?";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$id]);
             $staf = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -78,11 +78,11 @@ class StafAPI extends API {
             $limit = $this->getData('limit', 100);
             $offset = $this->getData('offset', 0);
             
-            $sql = "SELECT * FROM staf WHERE 1=1";
+            $sql = "SELECT * FROM users WHERE 1=1";
             $params = [];
             
             if ($search) {
-                $sql .= " AND (nama LIKE ? OR no_staf LIKE ? OR email LIKE ?)";
+                $sql .= " AND (nama LIKE ? OR no_staf LIKE ? OR emel LIKE ?)";
                 $searchTerm = "%$search%";
                 $params[] = $searchTerm;
                 $params[] = $searchTerm;
@@ -103,10 +103,10 @@ class StafAPI extends API {
             $staff = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Get total count
-            $countSql = "SELECT COUNT(*) as total FROM staf WHERE 1=1";
+            $countSql = "SELECT COUNT(*) as total FROM users WHERE 1=1";
             $countParams = [];
             if ($search) {
-                $countSql .= " AND (nama LIKE ? OR no_staf LIKE ? OR email LIKE ?)";
+                $countSql .= " AND (nama LIKE ? OR no_staf LIKE ? OR emel LIKE ?)";
                 $countParams[] = $searchTerm;
                 $countParams[] = $searchTerm;
                 $countParams[] = $searchTerm;
@@ -143,7 +143,7 @@ class StafAPI extends API {
             $data = $this->sanitize($this->getData());
             
             // Check for duplicate staff number
-            $checkSql = "SELECT id FROM staf WHERE no_staf = ?";
+            $checkSql = "SELECT id_user FROM users WHERE no_staf = ?";
             $checkStmt = $this->db->prepare($checkSql);
             $checkStmt->execute([$data['no_staf']]);
             
@@ -151,16 +151,16 @@ class StafAPI extends API {
                 $this->sendResponse(409, false, 'Staff number already exists');
             }
             
-            $sql = "INSERT INTO staf (nama, no_staf, email, telefon, bahagian, jawatan, tarikh_lahir, gambar) 
+            $sql = "INSERT INTO users (nama, no_staf, emel, telefon, id_bahagian, id_jawatan, tarikh_lahir, gambar) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 $data['nama'],
                 $data['no_staf'],
-                $data['email'],
+                $data['emel'],
                 $data['telefon'] ?? null,
-                $data['bahagian'] ?? null,
-                $data['jawatan'] ?? null,
+                $data['id_bahagian'] ?? null,
+                $data['id_jawatan'] ?? null,
                 $data['tarikh_lahir'] ?? null,
                 $data['gambar'] ?? null
             ]);
@@ -186,7 +186,7 @@ class StafAPI extends API {
             $id = $data['id'];
             
             // Check if staff exists
-            $checkSql = "SELECT id FROM staf WHERE id = ?";
+            $checkSql = "SELECT id_user FROM users WHERE id_user = ?";
             $checkStmt = $this->db->prepare($checkSql);
             $checkStmt->execute([$id]);
             
@@ -194,23 +194,23 @@ class StafAPI extends API {
                 $this->sendResponse(404, false, 'Staff not found');
             }
             
-            $sql = "UPDATE staf SET 
+            $sql = "UPDATE users SET 
                     nama = COALESCE(?, nama),
-                    email = COALESCE(?, email),
+                    emel = COALESCE(?, emel),
                     telefon = COALESCE(?, telefon),
-                    bahagian = COALESCE(?, bahagian),
-                    jawatan = COALESCE(?, jawatan),
+                    id_bahagian = COALESCE(?, id_bahagian),
+                    id_jawatan = COALESCE(?, id_jawatan),
                     tarikh_lahir = COALESCE(?, tarikh_lahir),
                     gambar = COALESCE(?, gambar)
-                    WHERE id = ?";
+                    WHERE id_user = ?";
             
             $stmt = $this->db->prepare($sql);
             $stmt->execute([
                 $data['nama'] ?? null,
-                $data['email'] ?? null,
+                $data['emel'] ?? null,
                 $data['telefon'] ?? null,
-                $data['bahagian'] ?? null,
-                $data['jawatan'] ?? null,
+                $data['id_bahagian'] ?? null,
+                $data['id_jawatan'] ?? null,
                 $data['tarikh_lahir'] ?? null,
                 $data['gambar'] ?? null,
                 $id
@@ -229,29 +229,25 @@ class StafAPI extends API {
      */
     private function handleDelete() {
         $this->validateRequired(['id']);
-        
         try {
             $id = $this->getData('id');
-            
             // Check if staff exists
-            $checkSql = "SELECT nama FROM staf WHERE id = ?";
+            $checkSql = "SELECT nama FROM users WHERE id_user = ?";
             $checkStmt = $this->db->prepare($checkSql);
             $checkStmt->execute([$id]);
             $staff = $checkStmt->fetch(PDO::FETCH_ASSOC);
-            
             if (!$staff) {
                 $this->sendResponse(404, false, 'Staff not found');
             }
-            
-            $sql = "DELETE FROM staf WHERE id = ?";
+            // Soft delete: set is_deleted=1
+            $sql = "UPDATE users SET is_deleted = 1 WHERE id_user = ?";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$id]);
-            
-            $this->logActivity('DELETE_STAFF', ['staff_id' => $id, 'name' => $staff['nama']]);
-            $this->sendResponse(200, true, 'Staff deleted successfully');
+            $this->logActivity('SOFT_DELETE_STAFF', ['staff_id' => $id, 'name' => $staff['nama']]);
+            $this->sendResponse(200, true, 'Staff soft deleted successfully');
         } catch (Exception $e) {
             error_log("Staff API Error: " . $e->getMessage());
-            $this->sendResponse(500, false, 'Failed to delete staff');
+            $this->sendResponse(500, false, 'Failed to soft delete staff');
         }
     }
 }

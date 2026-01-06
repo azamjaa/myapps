@@ -113,8 +113,8 @@ try {
 /**
  * Fungsi Semak Akses RBAC Enterprise
  * @param int $user_id ID pengguna dari session
- * @param int $app_id ID aplikasi (rujuk table aplikasi)
- * @param string $perm_name Nama permission (contoh: 'edit_staf')
+ * @param int $app_id ID aplikasi (rujuk table aplikasi) - tidak digunakan untuk permission check, hanya untuk backward compatibility
+ * @param string $perm_name Nama permission (contoh: 'create_user', 'edit_user', 'manage_roles')
  */
 function hasAccess($pdo, $user_id, $app_id, $perm_name) {
     $sql = "SELECT COUNT(*) 
@@ -122,12 +122,10 @@ function hasAccess($pdo, $user_id, $app_id, $perm_name) {
             JOIN role_permissions rp ON ur.id_role = rp.id_role
             JOIN permissions p ON rp.id_permission = p.id_permission
             WHERE ur.id_user = :user_id 
-            AND p.id_aplikasi = :app_id 
-            AND p.perm_name = :perm_name";
+            AND p.name = :perm_name";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
         'user_id'   => $user_id,
-        'app_id'    => $app_id,
         'perm_name' => $perm_name
     ]);
     return $stmt->fetchColumn() > 0;

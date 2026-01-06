@@ -8,19 +8,19 @@ if (isset($_POST['reset_request'])) {
     $no_kp = $_POST['no_kp'];
     $emel = $_POST['emel'];
 
-    // 1. Cari Staf
-    $stmt = $db->prepare("SELECT id_staf, nama FROM staf WHERE no_kp = ? AND emel = ? AND id_status = 1");
+    // 1. Cari User
+    $stmt = $db->prepare("SELECT id_user, nama FROM users WHERE no_kp = ? AND emel = ? AND id_status_staf = 1");
     $stmt->execute([$no_kp, $emel]);
     $user = $stmt->fetch();
 
     if ($user) {
         // 2. Jana Token
         $token = bin2hex(random_bytes(32));
-        $id_staf = $user['id_staf'];
+        $user_id = $user['id_user'];
 
         // 3. Simpan Token (Valid 24 jam)
-        $update = $db->prepare("UPDATE login SET reset_token = ?, reset_token_expiry = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE id_staf = ?");
-        $update->execute([$token, $id_staf]);
+        $update = $db->prepare("UPDATE login SET reset_token = ?, reset_token_expiry = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE id_user = ?");
+        $update->execute([$token, $user_id]);
 
         // 4. Hantar Emel Guna SMTP
         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';

@@ -119,7 +119,7 @@ return [
     
     'chatbot' => [
         'ollama_url' => env('OLLAMA_URL', 'http://localhost:11434/api/generate'),
-        'ollama_model' => env('OLLAMA_MODEL', 'mistral'),
+        'ollama_model' => env('OLLAMA_MODEL', 'qwen2.5'),
         'rate_limit' => env('CHATBOT_RATE_LIMIT', 15),
         'rate_window' => env('CHATBOT_RATE_WINDOW', 60),
     ],

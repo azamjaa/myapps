@@ -38,15 +38,15 @@ if (isset($_GET['export'])) {
           </tr>';
     
     // QUERY EXPORT
-    // Nota: Untuk Export, saya benarkan download SEMUA juga supaya selari dengan paparan direktori
-        $sqlExport = "SELECT u.nama, u.email, 
+    // Nota: Export dengan kolum: NAMA, JAWATAN, SKIM, GRED, BAHAGIAN, EMEL
+        $sqlExport = "SELECT u.nama, u.emel, 
                     j.jawatan, j.skim, g.gred, b.bahagian 
                 FROM users u 
                 LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan
                 LEFT JOIN gred g ON u.id_gred = g.id_gred
                 LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
-                WHERE u.id_status = 1
-                ORDER BY u.name ASC";
+                WHERE u.id_status_staf = 1
+                ORDER BY u.nama ASC";
         $stmt = $db->query($sqlExport);
     
     while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -56,7 +56,7 @@ if (isset($_GET['export'])) {
         echo '<td style="text-align:center;">' . htmlspecialchars($row['skim'] ?? '') . '</td>';
         echo '<td style="text-align:center;">' . htmlspecialchars($row['gred'] ?? '') . '</td>';
         echo '<td>' . htmlspecialchars($row['bahagian'] ?? '') . '</td>';
-        echo '<td>' . htmlspecialchars($row['email'] ?? '') . '</td>';
+        echo '<td>' . htmlspecialchars($row['emel'] ?? '') . '</td>';
         echo '</tr>';
     }
     echo '</table></body></html>';
@@ -85,7 +85,7 @@ $sqlCount = "SELECT COUNT(*) as total FROM users u
              LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan
              LEFT JOIN gred g ON u.id_gred = g.id_gred
              LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
-             WHERE u.id_status = 1 
+             WHERE u.id_status_staf = 1 
              AND (
                 u.nama LIKE ? OR 
                 u.no_kp LIKE ? OR 
@@ -117,7 +117,7 @@ $sql = "SELECT u.*, j.jawatan, j.skim, g.gred, b.bahagian
     LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan
     LEFT JOIN gred g ON u.id_gred = g.id_gred
     LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
-    WHERE u.id_status = 1 ";
+    WHERE u.id_status_staf = 1 ";
 
 // NOTA: Saya BUANG filter 'WHERE id_staf = my_id' supaya user boleh tengok semua orang.
 // Filter hanya berlaku pada butang Edit di bawah.
@@ -156,38 +156,29 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold text-dark">
             <i class="fas fa-users me-2 text-primary"></i> Direktori Staf
-        </h3>
-        <div>
-            <?php 
-            $showAddBtn = false;
-            if($role == 'admin' || $role == 'super_admin') {
-                $showAddBtn = true;
-            } else {
-                // Check user_roles table for admin/super_admin role
-                $adminCheckStmt = $db->prepare("SELECT COUNT(*) as admin_count FROM user_roles ur 
-                                                JOIN roles r ON ur.id_role = r.id_role 
-                                                WHERE ur.id_user = ? AND r.name IN ('admin', 'super_admin')");
-                $adminCheckStmt->execute([$my_id]);
-                $showAddBtn = $adminCheckStmt->fetch()['admin_count'] > 0;
-            }
-            
-            if($showAddBtn):
-            ?>
-                <a href="proses_staf.php?mode=add" class="btn btn-primary shadow-sm"><i class="fas fa-plus"></i> Tambah Staf</a>
-            <?php endif; ?>
-            
-            <a href="direktori_staf.php?export=1" class="btn btn-success shadow-sm" target="_blank"><i class="fas fa-file-excel"></i> Export Excel</a>
+        <!-- Butang di atas dibuang untuk elak duplikasi -->
         </div>
     </div>
 
     <div class="card shadow-sm mb-4 border-0">
         <div class="card-body">
-            <form class="row g-2">
-                <div class="col-md-12">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                        <input type="text" name="search" class="form-control border-start-0" placeholder="Cari nama, jawatan, atau bahagian..." value="<?php echo htmlspecialchars($search); ?>">
-                        <button class="btn btn-primary px-4" type="submit">Cari</button>
+            <form method="get" class="mb-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex flex-grow-1 gap-2">
+                        <input type="text" name="search" class="form-control" placeholder="Cari nama, jawatan, atau bahagian..." value="<?php echo htmlspecialchars($search); ?>">
+                        <button class="btn btn-primary d-flex align-items-center justify-content-center" type="submit">
+                            <span class="me-2"><i class="fas fa-search"></i></span>
+                            <span>Cari</span>
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2 ms-2">
+                        <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'create_user')): ?>
+                            <a href="proses_staf.php?mode=add" class="btn btn-primary"><i class="fas fa-plus"></i> Tambah Staf</a>
+                        <?php endif; ?>
+                        <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'export_data')): ?>
+                            <a href="direktori_staf.php?export=1" class="btn btn-success" target="_blank"><i class="fas fa-file-excel"></i> Export Excel</a>
+                        <?php endif; ?>
+                        <!-- Butang tambah staf dibuang untuk elak warning dan duplikasi -->
                     </div>
                 </div>
             </form>
@@ -234,34 +225,8 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
                                 <td class="small text-muted"><?php echo $row['bahagian']; ?></td>
                                 
                                 <td class="text-end px-3">
-                                    <?php 
-                                    $can_edit = false;
-                                    // 1. Admin role (legacy) boleh edit SEMUA
-                                    if ($role == 'admin' || $role == 'super_admin') {
-                                        $can_edit = true;
-                                    }
-                                    // 2. Check user_roles table - if admin/super_admin, boleh edit semua
-                                    else {
-                                        $adminCheckStmt = $db->prepare("SELECT COUNT(*) as admin_count FROM user_roles ur 
-                                                                        JOIN roles r ON ur.id_role = r.id_role 
-                                                                        WHERE ur.id_user = ? AND r.name IN ('admin', 'super_admin')");
-                                        $adminCheckStmt->execute([$my_id]);
-                                        $isAdmin = $adminCheckStmt->fetch()['admin_count'] > 0;
-                                        
-                                        if ($isAdmin) {
-                                            $can_edit = true;
-                                        }
-                                        // 3. User hanya boleh edit DIRI SENDIRI
-                                        elseif ($row['id_user'] == $my_id) {
-                                            $can_edit = true;
-                                        }
-                                    }
-                                    ?>
-
-                                    <?php if($can_edit): ?>
-                                        <a href="proses_staf.php?id=<?php echo $row['id_user']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
-                                    <?php else: ?>
-                                        <button class="btn btn-sm btn-light text-muted" disabled title="Tiada Akses"><i class="fas fa-lock"></i></button>
+                                    <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_user')): ?>
+                                        <a href="proses_staf.php?id=<?php echo $row['id_user']; ?>" class="btn btn-sm btn-warning" title="Edit / Tukar Status"><i class="fas fa-edit"></i></a>
                                     <?php endif; ?>
                                 </td>
                             </tr>

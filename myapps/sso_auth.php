@@ -28,40 +28,33 @@ class SSOAuth {
      */
     public function login($username, $password) {
         try {
-            // Get user from database
-            $sql = "SELECT * FROM users WHERE username = ? LIMIT 1";
+            // Get user from database, join status_staf
+            $sql = "SELECT u.*, s.nama_status FROM users u LEFT JOIN status_staf s ON u.id_status_staf = s.id_status WHERE u.username = ? LIMIT 1";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$username]);
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
-            
             if (!$user) {
                 return ['success' => false, 'message' => 'Invalid credentials'];
             }
-            
             // Verify password
             if (!password_verify($password, $user['password'])) {
                 return ['success' => false, 'message' => 'Invalid credentials'];
             }
-            
-            // Check if account is active
-            if (isset($user['status']) && $user['status'] != 'active') {
-                return ['success' => false, 'message' => 'Account is not active'];
+            // Only allow login if status is "MASIH BEKERJA"
+            if (strtoupper(trim($user['nama_status'] ?? '')) !== 'MASIH BEKERJA') {
+                return ['success' => false, 'message' => 'Akaun anda tidak aktif untuk login. Sila hubungi pentadbir.'];
             }
-            
             // Generate JWT token
             $token = $this->generateToken($user);
-            
             // Set session
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'] ?? 'user';
             $_SESSION['sso_token'] = $token;
-            
             // Update last login
-            $updateSql = "UPDATE users SET last_login = NOW() WHERE id = ?";
+            $updateSql = "UPDATE users SET last_login = NOW() WHERE id_user = ?";
             $updateStmt = $this->db->prepare($updateSql);
             $updateStmt->execute([$user['id']]);
-            
             return [
                 'success' => true,
                 'token' => $token,
@@ -71,7 +64,6 @@ class SSOAuth {
                     'role' => $user['role'] ?? 'user'
                 ]
             ];
-            
         } catch (Exception $e) {
             error_log("SSO Login Error: " . $e->getMessage());
             return ['success' => false, 'message' => 'Login failed'];

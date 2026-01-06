@@ -1,5 +1,12 @@
 <?php
 require 'db.php';
+global $config;
+
+// Konfigurasi boleh dikawal melalui .env (lihat config.php)
+$ollama_url    = $config['chatbot']['ollama_url']    ?? 'http://localhost:11434/api/generate';
+$ollama_model  = $config['chatbot']['ollama_model']  ?? 'mistral';
+$rate_limit    = (int)($config['chatbot']['rate_limit']   ?? 15);
+$rate_window   = (int)($config['chatbot']['rate_window']  ?? 60); // dalam saat
 
 if (isset($_POST['mesej'])) {
     // ============================================================
@@ -12,9 +19,9 @@ if (isset($_POST['mesej'])) {
 
     $time_diff = time() - $_SESSION['last_chat_time'];
     
-    if ($time_diff < 60) { // Within 1 minute window
+    if ($time_diff < $rate_window) { // Within rate window
         $_SESSION['chat_count']++;
-        if ($_SESSION['chat_count'] > 15) { // Max 15 requests per minute
+        if ($_SESSION['chat_count'] > $rate_limit) { // Max requests per window
             http_response_code(429);
             echo "⏳ Terlalu banyak permintaan. Sila tunggu sebentar dan cuba lagi.";
             exit;
@@ -94,20 +101,19 @@ if (isset($_POST['mesej'])) {
     }
     
     // 2. GUNAKAN LOCAL OLLAMA (TANPA QUOTA, TANPA API KEY)
-    $ollama_url = 'http://localhost:11434/api/generate';
     $nama_user = htmlspecialchars($_SESSION['nama'] ?? 'Pengguna'); // Sanitize session data
 
     // 3. ARAHAN WATAK (SYSTEM PROMPT) - BAHASA MELAYU SAHAJA
-    $system_instruction = "Anda adalah Mawar, chatbot pembantu MyApps KEDA. WAJIB: SEMUA jawapan MESTI dalam Bahasa Melayu (Malaysia). Jangan gunakan Bahasa Indonesia atau bahasa lain. Jawab dengan mesra, ringkas, dan jelas. Gunakan emoji jika sesuai. Panggil pengguna sebagai '$nama_user'.";
+    $system_instruction = "Anda adalah Mawar, chatbot pembantu MyApps KEDA. WAJIB: Jawab 100% dalam Bahasa Melayu (Malaysia) sahaja. Elakkan istilah Indonesia (contoh 'membutuhkan', 'pikir', 'kemudian'); gunakan padanan BM seperti 'memerlukan', 'fikir', 'kemudian'. Jika soalan bukan BM, terjemah dan jawab dalam BM. Jawab mesra, ringkas, jelas; guna emoji jika sesuai. Panggil pengguna sebagai '$nama_user'.";
 
     // 4. BINA PAYLOAD UNTUK OLLAMA
     $prompt = $system_instruction . "\n\nSoalan dari pengguna: " . $mesej_user . "\n\nJawapan (MESTI dalam Bahasa Melayu Malaysia):";
     
     $data = [
-        "model" => "mistral",  // mistral lebih baik untuk Bahasa Melayu
+        "model" => $ollama_model,
         "prompt" => $prompt,
         "stream" => false,
-        "temperature" => 0.3   // Lower temperature = lebih ketat pada instruction, kurang kreativ = lebih jelas
+        "temperature" => 0.3   // Lower temperature = lebih ketat pada instruction, kurang kreatif = lebih jelas
     ];
 
     // 5. SETTING cURL UNTUK OLLAMA
@@ -120,27 +126,46 @@ if (isset($_POST['mesej'])) {
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
 
     $result = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     $curl_error = curl_error($ch);
     curl_close($ch);
 
     // 6. PROSES RESPONSE
     if (!empty($curl_error)) {
         error_log('Ollama Connection Error: ' . $curl_error);
-        echo "Maaf, Ollama tidak berjalan. Pastikan Ollama buka (jalankan 'ollama serve' di terminal). 😊";
-    } else {
-        $response = json_decode($result, true);
+        echo "Maaf, Ollama tidak berjalan. Pastikan Ollama dibuka dengan 'ollama serve' dan boleh dicapai di $ollama_url";
+        exit;
+    }
+
+    if ($http_code >= 400 || empty($result)) {
+        error_log('Ollama HTTP Error (' . $http_code . '): ' . substr((string)$result, 0, 300));
+        echo "Maaf, tidak dapat berhubung dengan enjin AI. Sila cuba lagi.";
+        exit;
+    }
+
+    $response = json_decode($result, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log('Ollama JSON Decode Error: ' . json_last_error_msg() . ' | Raw: ' . substr($result, 0, 300));
+        echo "Maaf, respons AI tidak sah. Sila cuba sebentar lagi.";
+        exit;
+    }
+    
+    if (!empty($response['error'])) {
+        error_log('Ollama Model Error: ' . $response['error']);
+        echo "Model AI tidak sedia. Pastikan model '$ollama_model' sudah di-download (contoh: 'ollama run $ollama_model').";
+        exit;
+    }
+    
+    if (isset($response['response'])) {
+        $jawapan_ai = trim($response['response']);
         
-        if (isset($response['response'])) {
-            $jawapan_ai = trim($response['response']);
-            
-            // Format Bold (**teks** kepada <b>teks</b>)
-            $jawapan_ai = preg_replace('/\*\*(.*?)\*\*/', '<b>$1</b>', $jawapan_ai);
-            echo nl2br(htmlspecialchars($jawapan_ai));
-            error_log('Chatbot: Ollama response sent successfully');
-        } else {
-            error_log('Ollama Error: ' . json_encode($response));
-            echo "Ralat dari Ollama. Sila cuba sebentar lagi.";
-        }
+        // Format Bold (**teks** kepada <b>teks</b>)
+        $jawapan_ai = preg_replace('/\*\*(.*?)\*\*/', '<b>$1</b>', $jawapan_ai);
+        echo nl2br(htmlspecialchars($jawapan_ai));
+        error_log('Chatbot: Ollama response sent successfully');
+    } else {
+        error_log('Ollama Unknown Response: ' . json_encode($response));
+        echo "Ralat dari Ollama. Sila cuba sebentar lagi.";
     }
 }
 ?>

@@ -3,24 +3,24 @@ require 'db.php';
 include 'header.php';
 
 // Statistik
-$cntStaf = $db->query("SELECT COUNT(*) FROM users WHERE id_status = 1")->fetchColumn();
-$cntJawatan = $db->query("SELECT COUNT(DISTINCT id_jawatan) FROM users WHERE id_status = 1")->fetchColumn();
-$cntBahagian = $db->query("SELECT COUNT(DISTINCT id_bahagian) FROM users WHERE id_status = 1")->fetchColumn();
+$cntStaf = $db->query("SELECT COUNT(*) FROM users WHERE id_status_staf = 1")->fetchColumn();
+$cntJawatan = $db->query("SELECT COUNT(DISTINCT id_jawatan) FROM users WHERE id_status_staf = 1")->fetchColumn();
+$cntBahagian = $db->query("SELECT COUNT(DISTINCT id_bahagian) FROM users WHERE id_status_staf = 1")->fetchColumn();
 $bulanIni = date('m');
 // Fixed: Use prepared statement instead of string concatenation
-$stmtBirthday = $db->prepare("SELECT COUNT(*) FROM users WHERE SUBSTRING(no_kp, 3, 2) = ? AND id_status = 1");
+$stmtBirthday = $db->prepare("SELECT COUNT(*) FROM users WHERE SUBSTRING(no_kp, 3, 2) = ? AND id_status_staf = 1");
 $stmtBirthday->execute([$bulanIni]);
 $cntBirthday = $stmtBirthday->fetchColumn();
 
 // Data Chart
-$chartBahagian = $db->query("SELECT b.bahagian, COUNT(u.id_user) as total FROM users u JOIN bahagian b ON u.id_bahagian = b.id_bahagian WHERE u.id_status = 1 GROUP BY b.bahagian ORDER BY total DESC")->fetchAll();
-$chartJawatan = $db->query("SELECT j.jawatan, COUNT(u.id_user) as total FROM users u JOIN jawatan j ON u.id_jawatan = j.id_jawatan WHERE u.id_status = 1 GROUP BY j.jawatan ORDER BY total DESC LIMIT 5")->fetchAll();
+$chartBahagian = $db->query("SELECT b.bahagian, COUNT(u.id_user) as total FROM users u JOIN bahagian b ON u.id_bahagian = b.id_bahagian WHERE u.id_status_staf = 1 GROUP BY b.bahagian ORDER BY total DESC")->fetchAll();
+$chartJawatan = $db->query("SELECT j.jawatan, COUNT(u.id_user) as total FROM users u JOIN jawatan j ON u.id_jawatan = j.id_jawatan WHERE u.id_status_staf = 1 GROUP BY j.jawatan ORDER BY total DESC LIMIT 5")->fetchAll();
 ?>
 
 <div class="container-fluid">
     <h3 class="mb-4 fw-bold text-dark"><i class="fas fa-tachometer-alt me-3 text-primary"></i>Dashboard Staf</h3>
 
-    
+    <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'view_dashboard')): ?>
     <div class="row g-4 mb-4">
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #10B981 !important; background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%) !important;">
@@ -94,6 +94,7 @@ $chartJawatan = $db->query("SELECT j.jawatan, COUNT(u.id_user) as total FROM use
             </div>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <script>

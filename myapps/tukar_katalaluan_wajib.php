@@ -8,7 +8,7 @@ if (!isset($_SESSION['temp_id'])) {
 }
 
 // Tarik data user (Nama, Emel, Role) guna temp_id
-$stmtInfo = $db->prepare("SELECT u.name, u.email, ur.id_role, l.password_hash 
+$stmtInfo = $db->prepare("SELECT u.nama, u.emel, ur.id_role, l.password_hash 
                            FROM users u 
                            JOIN login l ON u.id_user = l.id_user 
                            LEFT JOIN user_roles ur ON u.id_user = ur.id_user AND ur.id_aplikasi = 1 
@@ -47,14 +47,14 @@ if (isset($_POST['change_pass'])) {
 
         // C. Hantar Emel OTP
         $subjek = "Kod OTP - MyApps KEDA";
-        $mesej  = "<h3>Hai {$userInfo['name']},</h3>";
+        $mesej  = "<h3>Hai {$userInfo['nama']},</h3>";
         $mesej .= "<p>Kata laluan anda berjaya dikemaskini.</p>";
         $mesej .= "<p>Kod OTP anda ialah:</p>";
         $mesej .= "<h1 style='color:#d32f2f; letter-spacing:5px;'>$otp</h1>";
 
-        if (hantarEmel($userInfo['email'], $subjek, $mesej)) {
+        if (hantarEmel($userInfo['emel'], $subjek, $mesej)) {
             // D. Kemaskini Session Info & Redirect
-            $_SESSION['temp_nama'] = $userInfo['name'];
+            $_SESSION['temp_nama'] = $userInfo['nama'];
             $_SESSION['temp_role'] = ($userInfo['id_role'] == 1) ? 'admin' : 'user';
             
             echo "<script>alert('Kata laluan berjaya dikemaskini! Sila masukkan kod OTP.'); window.location='sahkan_otp.php';</script>";

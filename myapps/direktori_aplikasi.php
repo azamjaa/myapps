@@ -161,16 +161,7 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch, $currentKat
         <h3 class="fw-bold text-dark">
             <i class="fas fa-list me-2 text-primary"></i> Direktori Aplikasi
         </h3>
-        <div class="d-flex gap-2">
-            <?php if($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'super_admin'): ?>
-                <a href="proses_aplikasi.php" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i> Tambah Aplikasi
-                </a>
-            <?php endif; ?>
-            <a href="?export=1" class="btn btn-success" target="_blank">
-                <i class="fas fa-file-excel me-2"></i> Export Excel
-            </a>
-        </div>
+        <!-- Butang di atas dibuang untuk elak duplikasi -->
     </div>
 
     <!-- Filter by Kategori -->
@@ -192,13 +183,23 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch, $currentKat
     <!-- Search Card -->
     <div class="card shadow-sm mb-4 border-0">
         <div class="card-body">
-            <form class="row g-2">
-                <div class="col-md-12">
-                    <div class="input-group">
-                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                        <input type="text" name="search" class="form-control border-start-0" placeholder="Cari nama aplikasi, kategori, atau keterangan..." value="<?php echo htmlspecialchars($search); ?>">
+            <form method="get" class="mb-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex flex-grow-1 gap-2">
+                        <input type="text" name="search" class="form-control" placeholder="Cari nama aplikasi, kategori, atau keterangan..." value="<?php echo htmlspecialchars($search); ?>">
                         <input type="hidden" name="kategori" value="<?php echo htmlspecialchars($kategori_filter); ?>">
-                        <button class="btn btn-primary px-4" type="submit">Cari</button>
+                        <button class="btn btn-primary d-flex align-items-center justify-content-center" type="submit">
+                            <span class="me-2"><i class="fas fa-search"></i></span>
+                            <span>Cari</span>
+                        </button>
+                    </div>
+                    <div class="d-flex gap-2 ms-2">
+                        <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'create_application')): ?>
+                            <a href="proses_aplikasi.php" class="btn btn-primary"><i class="fas fa-plus"></i> Tambah Aplikasi</a>
+                        <?php endif; ?>
+                        <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'export_data')): ?>
+                            <a href="?export=1" class="btn btn-success" target="_blank"><i class="fas fa-file-excel"></i> Export Excel</a>
+                        <?php endif; ?>
                     </div>
                 </div>
             </form>
@@ -248,8 +249,13 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch, $currentKat
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-end px-3" style="opacity: 1 !important; pointer-events: auto; position: relative; z-index: 10;">
-                                    <?php if($_SESSION['role'] === 'admin' || $_SESSION['role'] === 'super_admin'): ?>
+                                    <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_application')): ?>
                                         <a href="proses_aplikasi.php?id=<?php echo $row['id_aplikasi']; ?>" class="btn btn-sm btn-warning" title="Edit" style="pointer-events: auto;"><i class="fas fa-edit"></i></a>
+                                    <?php endif; ?>
+                                    <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'delete_application')): ?>
+                                        <a href="javascript:void(0);" class="btn btn-sm btn-danger" title="Padam" onclick="confirmDelete(<?php echo $row['id_aplikasi']; ?>, '<?php echo htmlspecialchars($row['nama_aplikasi']); ?>')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -284,3 +290,11 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch, $currentKat
         </div>
     </div>
 </div>
+
+<script>
+function confirmDelete(id, name) {
+    if (confirm("Anda pasti mahu padam aplikasi \"" + name + "\"?")) {
+        window.location.href = "proses_aplikasi.php?action=delete&id=" + id;
+    }
+}
+</script>

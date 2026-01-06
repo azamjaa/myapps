@@ -181,9 +181,9 @@ function logPasswordChange($db, $user_id, $forced = false) {
  * @return array Audit logs
  */
 function getAuditLogs($db, $filters = [], $limit = 50, $offset = 0) {
-    $sql = "SELECT a.*, s.nama, s.no_staf 
+    $sql = "SELECT a.*, s.nama 
             FROM audit_log a 
-            LEFT JOIN staf s ON a.user_id = s.id_staf 
+            LEFT JOIN users s ON a.user_id = s.id_user 
             WHERE 1=1";
     
     $params = [];
@@ -213,7 +213,7 @@ function getAuditLogs($db, $filters = [], $limit = 50, $offset = 0) {
         $params[] = $filters['date_to'];
     }
     
-    $sql .= " ORDER BY a.created_at DESC LIMIT ? OFFSET ?";
+    $sql .= " ORDER BY a.waktu DESC LIMIT ? OFFSET ?";
     $params[] = $limit;
     $params[] = $offset;
     
@@ -231,10 +231,15 @@ function getAuditLogs($db, $filters = [], $limit = 50, $offset = 0) {
  * @return int Number of deleted records
  */
 function cleanOldAuditLogs($db, $days = 90) {
-    $sql = "DELETE FROM audit_log WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)";
+    $sql = "DELETE FROM audit WHERE waktu < DATE_SUB(NOW(), INTERVAL ? DAY)";
     $stmt = $db->prepare($sql);
     $stmt->execute([$days]);
     
     return $stmt->rowCount();
 }
+?>
+
+<?php if(isset($_SESSION['user_id']) && hasAccess($pdo, $_SESSION['user_id'], 1, 'view_audit')): ?>
+<!-- Paparan audit log di sini -->
+<?php endif; ?>
 

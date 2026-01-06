@@ -1,4 +1,4 @@
-            <script>
+<script>
             // Buka semua link ke domain luar di browser (tab baru)
             document.addEventListener('DOMContentLoaded', function() {
                 document.querySelectorAll('a').forEach(function(link) {
@@ -81,20 +81,13 @@ if (isset($_POST['login'])) {
             $stmt = $db->prepare("SELECT u.id_user, u.nama, u.emel, u.gambar, l.password_hash, l.tarikh_tukar_katalaluan
                        FROM users u 
                        JOIN login l ON u.id_user = l.id_user 
-                       WHERE u.no_kp = ? AND u.id_status = 1");
+                       WHERE u.no_kp = ? AND u.id_status_staf = 1");
         $stmt->execute([$no_kp]);
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($user) {
-            // Check account status
-            $status = $user['status_account'] ?? 'active';
-            if ($status === 'suspended') {
-                $error = "Akaun anda telah digantung. Sila hubungi pentadbir.";
-            } elseif ($status === 'inactive') {
-                $error = "Akaun anda tidak aktif. Sila hubungi pentadbir.";
-            } else {
-                $db_hash = $user['password_hash'];
-                // Use password_verify directly - no bracket trimming needed
+            $db_hash = $user['password_hash'];
+            // Use password_verify directly - no bracket trimming needed
             
             if (password_verify($password, $db_hash)) {
                 if ($password === '123456') {
@@ -190,14 +183,13 @@ if (isset($_POST['login'])) {
             } else {
                 $error = 'Kombinasi No. Kad Pengenalan dan Kata Laluan tidak sah.';
                 if ($hasAudit && function_exists('log_audit')) {
-                    log_audit('LOGIN_FAILED', 'staf', null, null, 'Wrong password: ' . $no_kp);
+                    log_audit('LOGIN_FAILED', 'users', null, null, 'Wrong password: ' . $no_kp);
                 }
             }
-            } // End status check
         } else {
             $error = 'Akaun tidak ditemui atau tidak aktif.';
             if ($hasAudit && function_exists('log_audit')) {
-                log_audit('LOGIN_FAILED', 'staf', null, null, 'User not found: ' . $no_kp);
+                log_audit('LOGIN_FAILED', 'users', null, null, 'User not found: ' . $no_kp);
             }
         }
     }
@@ -258,18 +250,22 @@ if (isset($_GET['expired']) && $_GET['expired'] == 1) {
         .logo-float {
             animation: float 3s ease-in-out infinite;
         }
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 via-red-800 to-gray-900 relative overflow-hidden">
     
     <!-- Animated Background -->
-    <div class="absolute inset-0 overflow-hidden">
+    <div class="absolute inset-0 w-full h-full overflow-hidden -z-10">
         <img src="image/background.jpg" class="w-full h-full object-cover opacity-100" alt="Background">
+        <!-- Floating Circles -->
+        <div class="absolute top-20 left-10 w-72 h-72 bg-red-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
+        <div class="absolute bottom-20 right-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style="animation-delay: 1s;"></div>
     </div>
-    
-    <!-- Floating Circles -->
-    <div class="absolute top-20 left-10 w-72 h-72 bg-red-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-    <div class="absolute bottom-20 right-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style="animation-delay: 1s;"></div>
     
     <!-- Language Switcher removed - default Bahasa Melayu only -->
     

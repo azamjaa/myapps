@@ -7,80 +7,77 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
 ?>
 
 <style>
-    /* Tab Styling */
-    .nav-pills .nav-link {
-        border-radius: 8px;
-        background-color: #f0f0f0;
-        color: #333;
+    /* Tab Styling - Sepadankan dengan RBAC Management */
+    .nav-tabs .nav-link {
+        color: #666;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 12px 16px;
         font-weight: 500;
         transition: all 0.3s ease;
-        padding: 10px 15px;
-        font-size: 14px;
     }
     
-    .nav-pills .nav-link:hover {
-        background-color: #e0e0e0;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    .nav-tabs .nav-link:hover {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
     }
     
-    .nav-pills .nav-link.active {
-        background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
-        color: white;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-    }
-    
-    /* Responsive tabs */
-    @media (max-width: 768px) {
-        .nav-pills .nav-link {
-            padding: 8px 12px;
-            font-size: 13px;
-        }
-        
-        .nav-pills {
-            gap: 6px !important;
-        }
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+        background-color: transparent;
     }
 </style>
 
-<div class="container-fluid">
-    <h3 class="mb-4 fw-bold text-dark"><i class="fas fa-book-open me-3 text-primary"></i>Manual Pengguna</h3>
+<div class="container-fluid py-4">
+    <h3 class="fw-bold text-dark mb-4"><i class="fas fa-book-open me-2 text-primary"></i>Manual Pengguna</h3>
 
     <!-- Content Sections -->
     <div class="row">
-        <div class="col-lg-8">
+        <div class="col-12">
             <!-- Tab Navigation -->
-            <div class="mb-4">
-                <ul class="nav nav-pills" id="manualTabs" role="tablist" style="flex-wrap: wrap; gap: 8px;">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab">
-                            <i class="fas fa-home me-2"></i>Pendahuluan
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
-                            <i class="fas fa-chart-line me-2"></i>Dashboard
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="direktori-tab" data-bs-toggle="tab" data-bs-target="#direktori" type="button" role="tab">
-                            <i class="fas fa-list me-2"></i>Direktori
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="calendar-tab" data-bs-toggle="tab" data-bs-target="#calendar" type="button" role="tab">
-                            <i class="fas fa-calendar me-2"></i>Kalendar
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat" type="button" role="tab">
-                            <i class="fas fa-comments me-2"></i>Chat
-                        </button>
-                    </li>
-                </ul>
-            </div>
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="manualTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link active" id="home-tab" data-bs-toggle="tab" href="#home" role="tab">
+                                <i class="fas fa-home me-2"></i>Pendahuluan
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="faq-tab" data-bs-toggle="tab" href="#faq" role="tab">
+                                <i class="fas fa-question-circle me-2"></i>Soalan Lazim (FAQ)
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="dashboard-tab" data-bs-toggle="tab" href="#dashboard" role="tab">
+                                <i class="fas fa-chart-line me-2"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="direktori-tab" data-bs-toggle="tab" href="#direktori" role="tab">
+                                <i class="fas fa-list me-2"></i>Direktori
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="calendar-tab" data-bs-toggle="tab" href="#calendar" role="tab">
+                                <i class="fas fa-calendar me-2"></i>Kalendar
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="chat-tab" data-bs-toggle="tab" href="#chat" role="tab">
+                                <i class="fas fa-comments me-2"></i>Chat
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="contact-tab" data-bs-toggle="tab" href="#contact" role="tab">
+                                <i class="fas fa-headset me-2"></i>Khidmat Sokongan
+                            </a>
+                        </li>
+                    </ul>
 
-            <!-- Tab Content -->
-            <div class="tab-content" id="manualTabContent">
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="manualTabContent">
                 
                 <!-- PENDAHULUAN -->
                 <div class="tab-pane fade show active" id="home" role="tabpanel">
@@ -112,7 +109,7 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
                 <!-- DASHBOARD -->
                 <div class="tab-pane fade" id="dashboard" role="tabpanel">
                     <div class="card border-0 shadow-sm">
-                        <div class="card-body">
+                        <div class="card-body pt-4">
                             <h5 class="card-title mb-3">Dashboard Aplikasi & Staf</h5>
                             
                             <h6 class="mt-3 mb-2">Elemen Dashboard:</h6>
@@ -221,17 +218,11 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
                     </div>
                 </div>
 
-            </div>
-        </div>
-
-        <!-- SIDEBAR - FAQ -->
-        <div class="col-lg-4">
-            <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="mb-0"><i class="fas fa-question-circle me-2"></i>Soalan Lazim (FAQ)</h6>
-                </div>
-                <div class="card-body">
-                    <div class="accordion" id="faqAccordion">
+                <!-- FAQ TAB -->
+                <div class="tab-pane fade" id="faq" role="tabpanel">
+                    <div class="card border-0 shadow-sm pt-4">
+                        <div class="card-body">
+                            <div class="accordion" id="faqAccordion">
                         <div class="accordion-item">
                             <h2 class="accordion-header">
                                 <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
@@ -303,24 +294,39 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
                             </div>
                         </div>
                     </div>
+                    </div>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Contact Support -->
-            <div class="card border-0 shadow-sm mt-3">
-                <div class="card-body">
-                    <h6 class="card-title mb-3"><i class="fas fa-headset me-2 text-info"></i>Hubungi Sokongan</h6>
-                    <p class="small mb-2"><strong>Emel:</strong> <a href="mailto:support@keda.gov.my">utm@keda.gov.my</a></p>
-                    <p class="small mb-2"><strong>Telefon:</strong> <a href="tel:+60123456789">+604-7205300</a></p>
-                    <p class="small"><strong>Jam Operasi:</strong> Ahad - Khamis, 9:00 AM - 5:00 PM</p>
+                <!-- CONTACT TAB -->
+                <div class="tab-pane fade" id="contact" role="tabpanel">
+                    <div class="card border-0 shadow-sm pt-4">
+                        <div class="card-body">
+                            <h5 class="card-title mb-4"><i class="fas fa-headset me-2 text-info"></i>Khidmat Sokongan</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <p class="text-dark mb-3">Jika ada sebarang masalah, sila hubungi Unit Teknologi Maklumat (UTM) melalui cara berikut :</p>
+                                    <p class="small mb-2"><strong>Emel:</strong></p>
+                                    <p class="small mb-3"><a href="mailto:support@keda.gov.my">utm@keda.gov.my</a></p>
+                                    <p class="small mb-2"><strong>Telefon:</strong></p>
+                                    <p class="small mb-4"><a href="tel:+60123456789">+604-7205300</a></p>
+                                    <p class="small mb-2"><strong>Waktu Operasi :</strong></p>
+                                    <p class="small mb-1"><strong>Ahad - Rabu</strong></p>
+                                    <p class="small">8:30 AM - 5:00 PM</p>
+                                    <p class="small mb-1"><strong>Khamis</strong></p>
+                                    <p class="small">8:30 AM - 3:30 PM</p>
+                                    <p class="small mb-1"><strong>Jumaat dan Sabtu</strong></p>
+                                    <p class="small">Cuti</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
             </div>
         </div>
     </div>
 </div>
-
-<script>
-</script>
 
 <?php 
 if(file_exists('footer.php')) { 
