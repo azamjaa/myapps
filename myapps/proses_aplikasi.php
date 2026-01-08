@@ -16,7 +16,7 @@ if (!$is_admin) {
 // Define warna mapping untuk kategori
 $kategori_warna = [
     1 => '#F39C12',  // Dalaman (Orange)
-    2 => '#1ABC9C',  // Luaran (Teal)
+    2 => '#E74C3C',  // Luaran (Red)
     3 => '#6C3483'   // Gunasama (Purple)
 ];
 
