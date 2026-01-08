@@ -100,10 +100,16 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="aplikasi-tab" data-bs-toggle="tab" href="#aplikasi" role="tab">
+                        <i class="fas fa-th-list fa-lg text-info me-2"></i>Aplikasi
+                    </a>
+                </li>
+                <li class="nav-item" role="presentation">
                     <a class="nav-link" id="overview-tab" data-bs-toggle="tab" href="#overview" role="tab">
                         <i class="fas fa-diagram-project fa-lg text-primary me-2"></i>Struktur Pengurusan RBAC
                     </a>
                 </li>
+
             </ul>
             
             <style>
@@ -494,134 +500,178 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
 
                 <!-- Permissions Tab -->
                 <div class="tab-pane fade" id="permissions" role="tabpanel">
-                                        <div class="d-flex justify-content-between align-items-center mb-3">
-                                            <div class="d-flex flex-grow-1 gap-2">
-                                                <input type="text" class="form-control" id="searchPermissions" placeholder="Cari nama atau deskripsi permission...">
-                                                <button class="btn btn-primary" type="button" style="min-width:120px;" onclick="filterTable('permissionsTable', document.getElementById('searchPermissions').value)"><i class="fas fa-search"></i> Cari</button>
-                                            </div>
-                                            <div class="d-flex gap-2 ms-2">
-                                                <?php if(hasAccess($pdo, $current_user, 1, 'manage_roles')): ?>
-                                                <button class="btn btn-primary" style="min-width:180px;" onclick="showAddPermissionModal()"><i class="fas fa-plus"></i> Tambah Permission</button>
-                                                <?php endif; ?>
-                                                <button class="btn btn-success" style="min-width:120px;" onclick="exportExcel('permissionsTable')"><i class="fas fa-file-excel"></i> Export Excel</button>
-                                            </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex flex-grow-1 gap-2">
+                            <input type="text" class="form-control" id="searchPermissions" placeholder="Cari nama atau deskripsi permission...">
+                            <button class="btn btn-primary" type="button" style="min-width:120px;" onclick="filterTable('permissionsTable', document.getElementById('searchPermissions').value)"><i class="fas fa-search"></i> Cari</button>
+                        </div>
+                        <div class="d-flex gap-2 ms-2">
+                            <?php if(hasAccess($pdo, $current_user, 1, 'manage_roles')): ?>
+                            <button class="btn btn-primary" style="min-width:180px;" onclick="showAddPermissionModal()"><i class="fas fa-plus"></i> Tambah Permission</button>
+                            <?php endif; ?>
+                            <button class="btn btn-success" style="min-width:120px;" onclick="exportExcel('permissionsTable')"><i class="fas fa-file-excel"></i> Export Excel</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped align-middle sortable-table" id="permissionsTable">
+                            <thead class="bg-light text-uppercase small">
+                                <tr>
+                                    <th class="py-3 px-3 text-center" width="5%">Bil</th>
+                                    <th class="py-3">Nama Permission <?php echo sortLinkRBAC('name', $sort_permissions, $order_permissions, 'permissions'); ?></th>
+                                    <th class="py-3">Deskripsi <?php echo sortLinkRBAC('description', $sort_permissions, $order_permissions, 'permissions'); ?></th>
+                                    <th style="width:80px; text-align:center;">Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php $bil=1; foreach ($permissions as $p): ?>
+                                <tr>
+                                    <td><?php echo $bil++; ?></td>
+                                    <td><?php 
+                                        $permName = str_replace('_', ' ', $p['name']);
+                                        $permName = ucwords($permName);
+                                        echo htmlspecialchars($permName); 
+                                    ?></td>
+                                    <td><?php echo htmlspecialchars($p['description'] ?? ''); ?></td>
+                                    <td>
+                                        <?php if(hasAccess($pdo, $current_user, 1, 'manage_roles')): ?>
+                                        <button class="btn btn-warning btn-sm" title="Edit" onclick="showEditPermissionModal(<?php echo $p['id_permission']; ?>, '<?php echo htmlspecialchars(addslashes($p['name'])); ?>', '<?php echo htmlspecialchars(addslashes($p['description'])); ?>')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Modal Tambah/Ubah Permission -->
+                    <div class="modal fade" id="permissionModal" tabindex="-1" aria-labelledby="permissionModalLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="permissionModalLabel">Tambah/Ubah Permission</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="permissionForm">
+                                        <input type="hidden" id="permissionId" name="permissionId">
+                                        <div class="mb-3">
+                                            <label for="permissionName" class="form-label">Nama Permission</label>
+                                            <input type="text" class="form-control" id="permissionName" name="permissionName" required>
                                         </div>
-                                        <div class="table-responsive">
-                                            <table class="table table-hover table-striped align-middle sortable-table" id="permissionsTable">
-                                                <thead class="bg-light text-uppercase small">
-                                                    <tr>
-                                                        <th class="py-3 px-3 text-center" width="5%">Bil</th>
-                                                        <th class="py-3">Nama Permission <?php echo sortLinkRBAC('name', $sort_permissions, $order_permissions, 'permissions'); ?></th>
-                                                        <th class="py-3">Deskripsi <?php echo sortLinkRBAC('description', $sort_permissions, $order_permissions, 'permissions'); ?></th>
-                                                        <th style="width:80px; text-align:center;">Tindakan</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <?php $bil=1; foreach ($permissions as $p): ?>
-                                                    <tr>
-                                                        <td><?php echo $bil++; ?></td>
-                                                        <td><?php 
-                                                            $permName = str_replace('_', ' ', $p['name']);
-                                                            $permName = ucwords($permName);
-                                                            echo htmlspecialchars($permName); 
-                                                        ?></td>
-                                                        <td><?php echo htmlspecialchars($p['description'] ?? ''); ?></td>
-                                                        <td>
-                                                            <?php if(hasAccess($pdo, $current_user, 1, 'manage_roles')): ?>
-                                                            <button class="btn btn-warning btn-sm" title="Edit" onclick="showEditPermissionModal(<?php echo $p['id_permission']; ?>, '<?php echo htmlspecialchars(addslashes($p['name'])); ?>', '<?php echo htmlspecialchars(addslashes($p['description'])); ?>')">
-                                                                <i class="fas fa-edit"></i>
-                                                            </button>
-                                                            <?php endif; ?>
-                                                        </td>
-                                                    </tr>
-                                                    <?php endforeach; ?>
-                                                </tbody>
-                                            </table>
+                                        <div class="mb-3">
+                                            <label for="permissionDesc" class="form-label">Deskripsi</label>
+                                            <input type="text" class="form-control" id="permissionDesc" name="permissionDesc">
                                         </div>
-                                        <!-- Modal Tambah/Ubah Permission -->
-                                        <div class="modal fade" id="permissionModal" tabindex="-1" aria-labelledby="permissionModalLabel" aria-hidden="true">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content">
-                                                    <div class="modal-header">
-                                                        <h5 class="modal-title" id="permissionModalLabel">Tambah/Ubah Permission</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <div class="modal-body">
-                                                        <form id="permissionForm">
-                                                            <input type="hidden" id="permissionId" name="permissionId">
-                                                            <div class="mb-3">
-                                                                <label for="permissionName" class="form-label">Nama Permission</label>
-                                                                <input type="text" class="form-control" id="permissionName" name="permissionName" required>
-                                                            </div>
-                                                            <div class="mb-3">
-                                                                <label for="permissionDesc" class="form-label">Deskripsi</label>
-                                                                <input type="text" class="form-control" id="permissionDesc" name="permissionDesc">
-                                                            </div>
-                                                        </form>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-                                                        <button type="button" class="btn btn-primary" onclick="submitPermissionForm()">Simpan</button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <script>
-                                        function showAddPermissionModal() {
-                                                document.getElementById('permissionModalLabel').innerText = 'Tambah Permission';
-                                                document.getElementById('permissionId').value = '';
-                                                document.getElementById('permissionName').value = '';
-                                                document.getElementById('permissionDesc').value = '';
-                                                var modal = new bootstrap.Modal(document.getElementById('permissionModal'));
-                                                modal.show();
-                                        }
-                                        function showEditPermissionModal(id, name, desc) {
-                                                document.getElementById('permissionModalLabel').innerText = 'Ubah Permission';
-                                                document.getElementById('permissionId').value = id;
-                                                document.getElementById('permissionName').value = name;
-                                                document.getElementById('permissionDesc').value = desc;
-                                                var modal = new bootstrap.Modal(document.getElementById('permissionModal'));
-                                                modal.show();
-                                        }
-                                        function submitPermissionForm() {
-                                                var permissionId = document.getElementById('permissionId').value;
-                                                var permissionName = document.getElementById('permissionName').value;
-                                                var permissionDesc = document.getElementById('permissionDesc').value;
-                                                
-                                                if (!permissionName) {
-                                                    alert('Nama permission diperlukan');
-                                                    return;
-                                                }
-                                                
-                                                var formData = new FormData();
-                                                formData.append('action', 'savePermission');
-                                                formData.append('permissionId', permissionId);
-                                                formData.append('permissionName', permissionName);
-                                                formData.append('permissionDesc', permissionDesc);
-                                                
-                                                fetch('api/rbac.php', {
-                                                    method: 'POST',
-                                                    body: formData
-                                                })
-                                                .then(response => response.json())
-                                                .then(data => {
-                                                    if (data.success) {
-                                                        alert('Permission disimpan berjaya');
-                                                        location.reload();
-                                                    } else {
-                                                        alert('Ralat: ' + data.message);
-                                                    }
-                                                    var modal = bootstrap.Modal.getInstance(document.getElementById('permissionModal'));
-                                                    modal.hide();
-                                                })
-                                                .catch(error => {
-                                                    console.error('Error:', error);
-                                                    alert('Ralat menyimpan permission');
-                                                    var modal = bootstrap.Modal.getInstance(document.getElementById('permissionModal'));
-                                                    modal.hide();
-                                                });
-                                        }
-                                        </script>
+                                    </form>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                                    <button type="button" class="btn btn-primary" onclick="submitPermissionForm()">Simpan</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <script>
+                    function showAddPermissionModal() {
+                            document.getElementById('permissionModalLabel').innerText = 'Tambah Permission';
+                            document.getElementById('permissionId').value = '';
+                            document.getElementById('permissionName').value = '';
+                            document.getElementById('permissionDesc').value = '';
+                            var modal = new bootstrap.Modal(document.getElementById('permissionModal'));
+                            modal.show();
+                    }
+                    function showEditPermissionModal(id, name, desc) {
+                            document.getElementById('permissionModalLabel').innerText = 'Ubah Permission';
+                            document.getElementById('permissionId').value = id;
+                            document.getElementById('permissionName').value = name;
+                            document.getElementById('permissionDesc').value = desc;
+                            var modal = new bootstrap.Modal(document.getElementById('permissionModal'));
+                            modal.show();
+                    }
+                    function submitPermissionForm() {
+                            var permissionId = document.getElementById('permissionId').value;
+                            var permissionName = document.getElementById('permissionName').value;
+                            var permissionDesc = document.getElementById('permissionDesc').value;
+                            
+                            if (!permissionName) {
+                                alert('Nama permission diperlukan');
+                                return;
+                            }
+                            
+                            var formData = new FormData();
+                            formData.append('action', 'savePermission');
+                            formData.append('permissionId', permissionId);
+                            formData.append('permissionName', permissionName);
+                            formData.append('permissionDesc', permissionDesc);
+                            
+                            fetch('api/rbac.php', {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    alert('Permission disimpan berjaya');
+                                    location.reload();
+                                } else {
+                                    alert('Ralat: ' + data.message);
+                                }
+                                var modal = bootstrap.Modal.getInstance(document.getElementById('permissionModal'));
+                                modal.hide();
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Ralat menyimpan permission');
+                                var modal = bootstrap.Modal.getInstance(document.getElementById('permissionModal'));
+                                modal.hide();
+                            });
+                    }
+                    </script>
+                </div>
+
+                <!-- Aplikasi Tab -->
+                <div class="tab-pane fade" id="aplikasi" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold mb-0">Senarai Aplikasi Berdaftar dalam RBAC</h5>
+                        <div>
+                            <a href="proses_aplikasi.php" class="btn btn-primary"><i class="fas fa-plus"></i> Tambah Aplikasi</a>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped align-middle mb-0">
+                            <thead class="bg-light text-uppercase small">
+                                <tr>
+                                    <th class="py-3 px-3 text-center" width="5%">Bil</th>
+                                    <th class="py-3">Nama Aplikasi</th>
+                                    <th class="py-3">Kategori</th>
+                                    <th class="py-3">Status</th>
+                                    <th class="py-3">SSO</th>
+                                    <th class="py-3 text-center px-3">Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $aplikasiList = $pdo->query("SELECT a.*, k.nama_kategori FROM aplikasi a LEFT JOIN kategori k ON a.id_kategori = k.id_kategori ORDER BY a.id_kategori, a.nama_aplikasi")->fetchAll(PDO::FETCH_ASSOC);
+                                $bil = 1;
+                                foreach ($aplikasiList as $app): ?>
+                                <tr <?php echo ($app['status'] == 0) ? 'style="background-color: #f9f9f9;"' : ''; ?>>
+                                    <td class="text-center fw-bold text-muted" <?php echo ($app['status'] == 0) ? 'style="color: #bbb;"' : ''; ?>><?php echo $bil++; ?></td>
+                                    <td <?php echo ($app['status'] == 0) ? 'style="color: #bbb;"' : ''; ?>>
+                                        <?php echo htmlspecialchars($app['nama_aplikasi']); ?>
+                                        <?php echo ($app['status'] == 0) ? ' <span class="badge bg-danger ms-2">Tidak Aktif</span>' : ''; ?>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($app['nama_kategori'] ?? '-'); ?></td>
+                                    <td><?php echo ($app['status'] == 1) ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Tidak Aktif</span>'; ?></td>
+                                    <td><?php echo ($app['sso_comply'] == 1) ? '<span class="badge bg-success">✓ SSO</span>' : '-'; ?></td>
+                                    <td class="text-center px-3">
+                                        <a href="proses_aplikasi.php?id=<?php echo $app['id_aplikasi']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <!-- RBAC Overview Tab -->
