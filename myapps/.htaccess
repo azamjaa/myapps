@@ -6,6 +6,11 @@
     RewriteBase /myapps/
 </IfModule>
 
+# Pass Authorization header to PHP (SSO/OAuth2)
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+</IfModule>
+
 # Disable caching for PHP files
 <FilesMatch "\.(php)$">
     <IfModule mod_headers.c>

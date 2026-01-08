@@ -52,8 +52,11 @@ $sort_users_map = [
 ];
 $sort_field_users = $sort_users_map[$sort_users] ?? 'u.nama';
 
-// LOAD DATA
-$users = $pdo->query("SELECT u.id_user, u.nama, j.jawatan, j.skim, g.gred, b.bahagian, r.name as role 
+
+// Senarai aplikasi untuk dropdown
+$aplikasiList = $pdo->query("SELECT id_aplikasi, nama_aplikasi FROM aplikasi ORDER BY nama_aplikasi")->fetchAll(PDO::FETCH_ASSOC);
+
+$users = $pdo->query("SELECT u.id_user, u.nama, j.jawatan, j.skim, g.gred, b.bahagian, r.name as role, ur.id_aplikasi 
     FROM users u
     LEFT JOIN user_roles ur ON u.id_user = ur.id_user
     LEFT JOIN roles r ON ur.id_role = r.id_role
@@ -97,11 +100,6 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="permissions-tab" data-bs-toggle="tab" href="#permissions" role="tab">
                         <i class="fas fa-lock fa-lg text-danger me-2"></i>Permissions
-                    </a>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="aplikasi-tab" data-bs-toggle="tab" href="#aplikasi" role="tab">
-                        <i class="fas fa-th-list fa-lg text-info me-2"></i>Aplikasi
                     </a>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -225,6 +223,20 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
                                                                 </div>
                                                             </div>
                                                             <div class="mb-3">
+                                                                <label for="userApp" class="form-label">Aplikasi</label>
+                                                                <select class="form-select" id="userApp" name="userApp" required>
+                                                                    <option value="">-- Pilih Aplikasi --</option>
+                                                                    <?php foreach ($aplikasiList as $app): ?>
+                                                                    <option value="<?php echo $app['id_aplikasi']; ?>">
+                                                                        <?php echo htmlspecialchars($app['nama_aplikasi']); ?>
+                                                                    </option>
+                                                                    <?php endforeach; ?>
+                                                                </select>
+                                                                <div class="invalid-feedback" style="display: none; color: #dc3545; font-size: 13px; margin-top: 5px;">
+                                                                    Sila pilih aplikasi
+                                                                </div>
+                                                            </div>
+                                                            <div class="mb-3">
                                                                 <label for="userRole" class="form-label">Role</label>
                                                                 <select class="form-select" id="userRole" name="userRole" required>
                                                                     <option value="">-- Pilih Role --</option>
@@ -293,20 +305,20 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
                                                 var userBahagian = document.getElementById('userBahagian').value;
                                                 var userRole = document.getElementById('userRole').value;
                                                 var form = document.getElementById('userForm');
-                                                
+                                                var userApp = document.getElementById('userApp').value;
                                                 // Semak validation
                                                 var isValid = true;
                                                 var nameError = form.querySelector('[for="userName"] ~ .invalid-feedback');
                                                 var jawatanError = form.querySelector('[for="userJawatan"] ~ .invalid-feedback');
                                                 var bahagianError = form.querySelector('[for="userBahagian"] ~ .invalid-feedback');
+                                                var appError = form.querySelector('[for="userApp"] ~ .invalid-feedback');
                                                 var roleError = form.querySelector('[for="userRole"] ~ .invalid-feedback');
-                                                
                                                 // Reset error display
                                                 nameError.style.display = 'none';
                                                 jawatanError.style.display = 'none';
                                                 bahagianError.style.display = 'none';
+                                                appError.style.display = 'none';
                                                 roleError.style.display = 'none';
-                                                
                                                 if (!userName) {
                                                     nameError.style.display = 'block';
                                                     isValid = false;
@@ -319,15 +331,17 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
                                                     bahagianError.style.display = 'block';
                                                     isValid = false;
                                                 }
+                                                if (!userApp) {
+                                                    appError.style.display = 'block';
+                                                    isValid = false;
+                                                }
                                                 if (!userRole) {
                                                     roleError.style.display = 'block';
                                                     isValid = false;
                                                 }
-                                                
                                                 if (!isValid) {
                                                     return;
                                                 }
-                                                
                                                 var formData = new FormData();
                                                 formData.append('action', 'saveUser');
                                                 formData.append('userId', userId);
@@ -335,7 +349,7 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
                                                 formData.append('userJawatan', userJawatan);
                                                 formData.append('userBahagian', userBahagian);
                                                 formData.append('userRole', userRole);
-                                                
+                                                formData.append('appId', userApp);
                                                 fetch('api/rbac.php', {
                                                     method: 'POST',
                                                     body: formData
@@ -630,49 +644,6 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
                     </script>
                 </div>
 
-                <!-- Aplikasi Tab -->
-                <div class="tab-pane fade" id="aplikasi" role="tabpanel">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="fw-bold mb-0">Senarai Aplikasi Berdaftar dalam RBAC</h5>
-                        <div>
-                            <a href="proses_aplikasi.php" class="btn btn-primary"><i class="fas fa-plus"></i> Tambah Aplikasi</a>
-                        </div>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover table-striped align-middle mb-0">
-                            <thead class="bg-light text-uppercase small">
-                                <tr>
-                                    <th class="py-3 px-3 text-center" width="5%">Bil</th>
-                                    <th class="py-3">Nama Aplikasi</th>
-                                    <th class="py-3">Kategori</th>
-                                    <th class="py-3">Status</th>
-                                    <th class="py-3">SSO</th>
-                                    <th class="py-3 text-center px-3">Tindakan</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                $aplikasiList = $pdo->query("SELECT a.*, k.nama_kategori FROM aplikasi a LEFT JOIN kategori k ON a.id_kategori = k.id_kategori ORDER BY a.id_kategori, a.nama_aplikasi")->fetchAll(PDO::FETCH_ASSOC);
-                                $bil = 1;
-                                foreach ($aplikasiList as $app): ?>
-                                <tr <?php echo ($app['status'] == 0) ? 'style="background-color: #f9f9f9;"' : ''; ?>>
-                                    <td class="text-center fw-bold text-muted" <?php echo ($app['status'] == 0) ? 'style="color: #bbb;"' : ''; ?>><?php echo $bil++; ?></td>
-                                    <td <?php echo ($app['status'] == 0) ? 'style="color: #bbb;"' : ''; ?>>
-                                        <?php echo htmlspecialchars($app['nama_aplikasi']); ?>
-                                        <?php echo ($app['status'] == 0) ? ' <span class="badge bg-danger ms-2">Tidak Aktif</span>' : ''; ?>
-                                    </td>
-                                    <td><?php echo htmlspecialchars($app['nama_kategori'] ?? '-'); ?></td>
-                                    <td><?php echo ($app['status'] == 1) ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Tidak Aktif</span>'; ?></td>
-                                    <td><?php echo ($app['sso_comply'] == 1) ? '<span class="badge bg-success">✓ SSO</span>' : '-'; ?></td>
-                                    <td class="text-center px-3">
-                                        <a href="proses_aplikasi.php?id=<?php echo $app['id_aplikasi']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
 
                 <!-- RBAC Overview Tab -->
                 <div class="tab-pane fade" id="overview" role="tabpanel">

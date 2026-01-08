@@ -48,9 +48,13 @@ try {
         $userName = $_POST['userName'] ?? null;
         $userEmail = $_POST['userEmail'] ?? null;
         $userRole = $_POST['userRole'] ?? null;
+        $appId = $_POST['appId'] ?? null; // aplikasi yang dipilih
         
         if (!$userName || !$userEmail) {
             throw new Exception('Nama dan email diperlukan');
+        }
+        if (!$appId) {
+            throw new Exception('Aplikasi diperlukan untuk assign role.');
         }
         
         if ($userId) {
@@ -58,31 +62,28 @@ try {
             $stmt = $pdo->prepare("UPDATE users SET nama = ?, emel = ? WHERE id_user = ?");
             $stmt->execute([$userName, $userEmail, $userId]);
             
-            // Update user role if provided
+            // Update user role for specific app
             if ($userRole && $userRole !== '') {
                 // Get role ID
                 $roleStmt = $pdo->prepare("SELECT id_role FROM roles WHERE name = ?");
                 $roleStmt->execute([$userRole]);
                 $roleData = $roleStmt->fetch(PDO::FETCH_ASSOC);
-                
                 if ($roleData) {
-                    // Delete existing roles first
-                    $deleteStmt = $pdo->prepare("DELETE FROM user_roles WHERE id_user = ?");
-                    $deleteStmt->execute([$userId]);
-                    
-                    // Insert new role
-                    $insertStmt = $pdo->prepare("INSERT INTO user_roles (id_user, id_role) VALUES (?, ?)");
-                    $insertStmt->execute([$userId, $roleData['id_role']]);
+                    // Delete existing role for this user & app only
+                    $deleteStmt = $pdo->prepare("DELETE FROM user_roles WHERE id_user = ? AND id_aplikasi = ?");
+                    $deleteStmt->execute([$userId, $appId]);
+                    // Insert new role for this app
+                    $insertStmt = $pdo->prepare("INSERT INTO user_roles (id_user, id_role, id_aplikasi) VALUES (?, ?, ?)");
+                    $insertStmt->execute([$userId, $roleData['id_role'], $appId]);
                 }
             } elseif ($userRole === '') {
-                // Remove all roles if empty selection
-                $deleteStmt = $pdo->prepare("DELETE FROM user_roles WHERE id_user = ?");
-                $deleteStmt->execute([$userId]);
+                // Remove all roles for this user & app if empty selection
+                $deleteStmt = $pdo->prepare("DELETE FROM user_roles WHERE id_user = ? AND id_aplikasi = ?");
+                $deleteStmt->execute([$userId, $appId]);
             }
         } else {
             throw new Exception('Pengguna baru tidak boleh dibuat di sini. Sila gunakan sistem pendaftaran yang sedia ada.');
         }
-        
         echo json_encode(['success' => true, 'message' => 'User disimpan berjaya']);
     }
     

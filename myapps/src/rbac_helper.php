@@ -18,13 +18,14 @@ function checkUserAccess($pdo, $user_id, $app_id, $perm_name) {
             JOIN role_permissions rp ON ur.id_role = rp.id_role
             JOIN permissions p ON rp.id_permission = p.id_permission
             WHERE ur.id_user = :user_id
+              AND ur.id_aplikasi = :app_id
               AND p.name = :perm_name
               AND p.id_aplikasi = :app_id";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
         'user_id'   => $user_id,
-        'perm_name' => $perm_name,
-        'app_id'    => $app_id
+        'app_id'    => $app_id,
+        'perm_name' => $perm_name
     ]);
     return $stmt->fetchColumn() > 0;
 }
