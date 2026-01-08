@@ -86,31 +86,34 @@ try {
         echo json_encode(['success' => true, 'message' => 'User disimpan berjaya']);
     }
     
-    elseif ($action === 'saveRole') {
-        $roleId = $_POST['roleId'] ?? null;
-        $roleName = $_POST['roleName'] ?? null;
-        $roleDesc = $_POST['roleDesc'] ?? null;
-        
-        if (!$roleName) {
-            throw new Exception('Nama role diperlukan');
+    if ($action === 'saveUser') {
+        $userId = $_POST['userId'] ?? null;
+        $userName = $_POST['userName'] ?? null;
+        $userJawatan = $_POST['userJawatan'] ?? null;
+        $userBahagian = $_POST['userBahagian'] ?? null;
+        $userRole = $_POST['userRole'] ?? null;
+        if (!$userName) {
+            throw new Exception('Nama diperlukan');
         }
-        
-        // Normalize role name (lowercase, underscores)
-        $normalizedName = strtolower(str_replace(' ', '_', $roleName));
-        
-        if ($roleId) {
-            // Update existing role
-            $stmt = $pdo->prepare("UPDATE roles SET name = ?, description = ? WHERE id_role = ?");
-            $stmt->execute([$normalizedName, $roleDesc, $roleId]);
+        if (!$userJawatan) {
+            throw new Exception('Jawatan diperlukan');
+        }
+        if (!$userBahagian) {
+            throw new Exception('Bahagian diperlukan');
+        }
+        if ($userId) {
+            // Update existing user
+            $stmt = $pdo->prepare("UPDATE users SET nama = ?, id_jawatan = (SELECT id_jawatan FROM jawatan WHERE jawatan = ? LIMIT 1), id_bahagian = (SELECT id_bahagian FROM bahagian WHERE bahagian = ? LIMIT 1) WHERE id_user = ?");
+            $stmt->execute([$userName, $userJawatan, $userBahagian, $userId]);
+            // Update role
+            $stmt = $pdo->prepare("UPDATE user_roles SET id_role = (SELECT id_role FROM roles WHERE name = ?) WHERE id_user = ?");
+            $stmt->execute([$userRole, $userId]);
         } else {
-            // Create new role
-            $stmt = $pdo->prepare("INSERT INTO roles (name, description) VALUES (?, ?)");
-            $stmt->execute([$normalizedName, $roleDesc]);
+            throw new Exception('Tambah user baru tidak disokong di sini');
         }
-        
-        echo json_encode(['success' => true, 'message' => 'Role disimpan berjaya']);
+        echo json_encode(['success' => true]);
+        exit;
     }
-    
     elseif ($action === 'savePermission') {
         $permissionId = $_POST['permissionId'] ?? null;
         $permissionName = $_POST['permissionName'] ?? null;

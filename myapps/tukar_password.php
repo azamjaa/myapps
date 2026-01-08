@@ -9,10 +9,10 @@ if (isset($_POST['change_pass'])) {
     verifyCsrfToken(); // CSRF Protection
     
     $current_pass = $_POST['current_password'];
-    $new_pass     = $_POST['new_password'];
+    $new_pass = $_POST['new_password'];
     $confirm_pass = $_POST['confirm_password'];
 
-    $id_user      = $_SESSION['user_id'] ?? null;
+    $id_user = $_SESSION['user_id'] ?? null;
 
     if (!$id_user) {
         $msg = "<div class='alert alert-danger'>Ralat: Session tidak sah. Sila login semula.</div>";
@@ -66,11 +66,7 @@ if (isset($_POST['change_pass'])) {
 ?>
 
 <div class="container-fluid">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow-sm mt-4 border-0">
-                <div class="card-header bg-dark text-white fw-bold">
-                    <i class="fas fa-lock me-2"></i> Tukar Kata Laluan
+    <h3 class="mb-4 fw-bold text-dark"><i class="fas fa-lock me-3 text-primary"></i>Tukar Kata Laluan</h3>
                 </div>
                 <div class="card-body p-4">
                     

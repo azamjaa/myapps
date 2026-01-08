@@ -4,21 +4,18 @@ include 'header.php';
 
 // Statistik Aplikasi
 $cntAplikasi = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1")->fetchColumn();
-
-// Count by kategori
 $cntDalaman = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 1")->fetchColumn();
 $cntLuaran = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 2")->fetchColumn();
 $cntGunasama = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 3")->fetchColumn();
-
-// Data Chart - Aplikasi by Kategori
 $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_aplikasi) as total FROM aplikasi a JOIN kategori k ON a.id_kategori = k.id_kategori WHERE a.status = 1 GROUP BY a.id_kategori, k.nama_kategori ORDER BY a.id_kategori ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <div class="container-fluid">
     <h3 class="mb-4 fw-bold text-dark"><i class="fas fa-chart-line me-3 text-primary"></i>Dashboard Aplikasi</h3>
-
     <!-- Clickable Summary Statistics Cards as Tabs -->
     <div class="row g-4 mb-4">
+        <!-- ...existing summary cards code... -->
+        <?php /* The summary cards code block remains unchanged, just moved inside main content */ ?>
         <div class="col-md-3">
             <div class="card border-0 shadow-sm h-100 summary-card active" data-bs-toggle="pill" data-bs-target="#semua" role="tab" style="border-left: 5px solid #10B981 !important; cursor: pointer; background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%) !important;">
                 <div class="card-body d-flex align-items-center justify-content-between">
@@ -75,7 +72,8 @@ $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_a
 
     <!-- Tab Content Container -->
     <div class="tab-content" id="kategoriTabContent">
-        
+        <!-- ...existing tab panes code... -->
+        <!-- The tab panes code block remains unchanged, just moved inside main content -->
         <!-- TAB: SEMUA -->
         <div class="tab-pane fade show active" id="semua" role="tabpanel">
     

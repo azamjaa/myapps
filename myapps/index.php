@@ -199,6 +199,11 @@ if (isset($_POST['login'])) {
 if (isset($_GET['expired']) && $_GET['expired'] == 1) {
     $error = 'Sesi tamat tempoh. Sila log masuk semula.';
 }
+
+// Check if account is not active
+if (isset($_GET['notactive']) && $_GET['notactive'] == 1) {
+    $error = 'Akaun anda tidak lagi aktif. Sila hubungi pentadbir sistem.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="ms">

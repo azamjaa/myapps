@@ -9,10 +9,10 @@ if (!isset($_SESSION['temp_id'])) {
 
 // Tarik data user (Nama, Emel, Role) guna temp_id
 $stmtInfo = $db->prepare("SELECT u.nama, u.emel, ur.id_role, l.password_hash 
-                           FROM users u 
-                           JOIN login l ON u.id_user = l.id_user 
-                           LEFT JOIN user_roles ur ON u.id_user = ur.id_user AND ur.id_aplikasi = 1 
-                           WHERE u.id_user = ?");
+FROM users u
+JOIN login l ON u.id_user = l.id_user
+LEFT JOIN user_roles ur ON u.id_user = ur.id_user AND ur.id_aplikasi = 1
+WHERE u.id_user = ?");
 $stmtInfo->execute([$_SESSION['temp_id']]);
 $userInfo = $stmtInfo->fetch(PDO::FETCH_ASSOC);
 
@@ -47,7 +47,7 @@ if (isset($_POST['change_pass'])) {
 
         // C. Hantar Emel OTP
         $subjek = "Kod OTP - MyApps KEDA";
-        $mesej  = "<h3>Hai {$userInfo['nama']},</h3>";
+        $mesej = "<h3>Hai {$userInfo['nama']},</h3>";
         $mesej .= "<p>Kata laluan anda berjaya dikemaskini.</p>";
         $mesej .= "<p>Kod OTP anda ialah:</p>";
         $mesej .= "<h1 style='color:#d32f2f; letter-spacing:5px;'>$otp</h1>";
@@ -78,7 +78,7 @@ if (isset($_POST['change_pass'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-light d-flex align-items-center justify-content-center vh-100">
-    <div class="card shadow border-0 p-4" style="width: 450px; border-top: 5px solid #d32f2f;">
+    <div class="card shadow border-0 p-4" style="width: 100%; border-top: 5px solid #d32f2f;">
         <div class="text-center mb-3">
             <img src="image/keda.png" width="60" class="mb-2">
             <h4 class="mb-1 text-danger fw-bold">Polisi Kata Laluan Baru</h4>

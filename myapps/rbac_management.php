@@ -19,57 +19,117 @@ try {
     exit;
 }
 
+// GET SORT PARAMETERS
+$sort_users = $_GET['sort_users'] ?? 'nama';
+$order_users = $_GET['order_users'] ?? 'ASC';
+$sort_roles = $_GET['sort_roles'] ?? 'name';
+$order_roles = $_GET['order_roles'] ?? 'ASC';
+$sort_permissions = $_GET['sort_permissions'] ?? 'name';
+$order_permissions = $_GET['order_permissions'] ?? 'ASC';
+
+// VALIDATE SORT
+$allowed_sorts_users = ['id_user', 'nama', 'jawatan', 'skim', 'gred', 'bahagian', 'role'];
+$allowed_sorts_roles = ['id_role', 'name', 'description'];
+$allowed_sorts_permissions = ['id_permission', 'name', 'description'];
+$allowed_order = ['ASC', 'DESC'];
+
+if (!in_array($sort_users, $allowed_sorts_users)) $sort_users = 'nama';
+if (!in_array($order_users, $allowed_order)) $order_users = 'ASC';
+if (!in_array($sort_roles, $allowed_sorts_roles)) $sort_roles = 'name';
+if (!in_array($order_roles, $allowed_order)) $order_roles = 'ASC';
+if (!in_array($sort_permissions, $allowed_sorts_permissions)) $sort_permissions = 'name';
+if (!in_array($order_permissions, $allowed_order)) $order_permissions = 'ASC';
+
+// SORT FIELD MAPPING
+$sort_users_map = [
+    'id_user' => 'u.id_user',
+    'nama' => 'u.nama',
+    'jawatan' => 'j.jawatan',
+    'skim' => 'j.skim',
+    'gred' => 'g.gred',
+    'bahagian' => 'b.bahagian',
+    'role' => 'r.name'
+];
+$sort_field_users = $sort_users_map[$sort_users] ?? 'u.nama';
+
 // LOAD DATA
-$users = $pdo->query("SELECT u.id_user, u.nama, u.emel, r.name as role FROM users u
+$users = $pdo->query("SELECT u.id_user, u.nama, j.jawatan, j.skim, g.gred, b.bahagian, r.name as role 
+    FROM users u
     LEFT JOIN user_roles ur ON u.id_user = ur.id_user
     LEFT JOIN roles r ON ur.id_role = r.id_role
-    ORDER BY u.nama ASC")->fetchAll(PDO::FETCH_ASSOC);
+    LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan
+    LEFT JOIN gred g ON u.id_gred = g.id_gred
+    LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
+    WHERE u.id_status_staf = 1
+    ORDER BY $sort_field_users $order_users")->fetchAll(PDO::FETCH_ASSOC);
 
-$roles = $pdo->query("SELECT * FROM roles ORDER BY id_role ASC")->fetchAll(PDO::FETCH_ASSOC);
+$roles = $pdo->query("SELECT * FROM roles ORDER BY $sort_roles $order_roles")->fetchAll(PDO::FETCH_ASSOC);
 
-$permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC")->fetchAll(PDO::FETCH_ASSOC);
+$permissions = $pdo->query("SELECT * FROM permissions ORDER BY $sort_permissions $order_permissions")->fetchAll(PDO::FETCH_ASSOC);
+
+// SORT LINK FUNCTION
+function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
+    $newOrder = ($currentSort == $col && $currentOrder == 'ASC') ? 'DESC' : 'ASC';
+    $icon = ($currentSort == $col) ? (($currentOrder == 'ASC') ? ' <i class="fas fa-sort-up"></i>' : ' <i class="fas fa-sort-down"></i>') : ' <i class="fas fa-sort text-muted opacity-25"></i>';
+    return "<a href='?sort_{$paramPrefix}=$col&order_{$paramPrefix}=$newOrder' class='text-dark text-decoration-none fw-bold'>$icon</a>";
+}
 ?>
 
 <!-- CONTENT AREA -->
-<div class="container-fluid py-4">
+<div class="container-fluid">
     <!-- Header -->
-    <div class="mb-4">
-        <h3 class="fw-bold text-dark mb-0">
-            <i class="fas fa-user-shield text-primary me-2"></i>Pengurusan Role Based Access Control (RBAC)
-        </h3>
-    </div>
+    <h3 class="mb-4 fw-bold text-dark"><i class="fas fa-user-shield fa-lg text-primary me-3"></i>Pengurusan Role Based Access Control (RBAC)</h3>
 
     <div class="card shadow-sm border-0">
         <div class="card-body">
             <!-- Nav Tabs -->
             <ul class="nav nav-tabs mb-4" role="tablist">
-                <li class="nav-item">
+                <li class="nav-item" role="presentation">
                     <a class="nav-link active" id="users-tab" data-bs-toggle="tab" href="#users" role="tab">
-                        <i class="fas fa-users mr-2"></i>Users
+                        <i class="fas fa-users fa-lg text-success me-2"></i>Users
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item" role="presentation">
                     <a class="nav-link" id="roles-tab" data-bs-toggle="tab" href="#roles" role="tab">
-                        <i class="fas fa-shield mr-2"></i>Roles
+                        <i class="fas fa-user-shield fa-lg text-warning me-2"></i>Roles
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item" role="presentation">
                     <a class="nav-link" id="permissions-tab" data-bs-toggle="tab" href="#permissions" role="tab">
-                        <i class="fas fa-lock mr-2"></i>Permissions
+                        <i class="fas fa-lock fa-lg text-danger me-2"></i>Permissions
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item" role="presentation">
                     <a class="nav-link" id="overview-tab" data-bs-toggle="tab" href="#overview" role="tab">
-                        <i class="fas fa-diagram-project mr-2"></i>Struktur Pengurusan RBAC
+                        <i class="fas fa-diagram-project fa-lg text-primary me-2"></i>Struktur Pengurusan RBAC
                     </a>
                 </li>
             </ul>
+            
+            <style>
+                .nav-tabs .nav-link {
+                    color: #000000;
+                    border: none;
+                    border-bottom: 3px solid transparent;
+                    padding: 12px 16px;
+                    font-weight: 500;
+                    transition: all 0.3s ease;
+                }
+                .nav-tabs .nav-link:hover {
+                    color: #0d6efd;
+                    border-bottom-color: #0d6efd;
+                }
+                .nav-tabs .nav-link.active {
+                    color: #0d6efd;
+                    border-bottom-color: #0d6efd;
+                    background-color: transparent;
+                }
+            </style>
 
             <!-- Tab Content -->
             <div class="tab-content">
                 <!-- Users Tab -->
                 <div class="tab-pane fade show active" id="users" role="tabpanel">
-                                        <h5 class="mb-3">Senarai Users</h5>
                                         <div class="d-flex justify-content-between align-items-center mb-3">
                                             <div class="d-flex flex-grow-1 gap-2">
                                                 <input type="text" class="form-control" id="searchUsers" placeholder="Cari nama, email, atau role...">
@@ -85,11 +145,14 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
                                             <table class="table table-hover table-striped align-middle mb-0" id="usersTable">
                                                 <thead class="bg-light text-uppercase small">
                                                     <tr>
-                                                        <th style="width:50px;cursor:pointer;" onclick="sortTable('usersTable', 0)">Bil</th>
-                                                        <th style="cursor:pointer;" onclick="sortTable('usersTable', 1)">Nama</th>
-                                                        <th style="cursor:pointer;" onclick="sortTable('usersTable', 2)">Email</th>
-                                                        <th style="cursor:pointer;" onclick="sortTable('usersTable', 3)">Role</th>
-                                                        <th style="width:80px;">Tindakan</th>
+                                                        <th class="py-3 px-3 text-center" width="5%">Bil</th>
+                                                        <th class="py-3">Nama <?php echo sortLinkRBAC('nama', $sort_users, $order_users, 'users'); ?></th>
+                                                        <th class="py-3">Jawatan <?php echo sortLinkRBAC('jawatan', $sort_users, $order_users, 'users'); ?></th>
+                                                        <th class="py-3 text-center">Skim <?php echo sortLinkRBAC('skim', $sort_users, $order_users, 'users'); ?></th>
+                                                        <th class="py-3 text-center">Gred <?php echo sortLinkRBAC('gred', $sort_users, $order_users, 'users'); ?></th>
+                                                        <th class="py-3">Bahagian <?php echo sortLinkRBAC('bahagian', $sort_users, $order_users, 'users'); ?></th>
+                                                        <th class="py-3">Role <?php echo sortLinkRBAC('role', $sort_users, $order_users, 'users'); ?></th>
+                                                        <th style="width:80px; text-align:center;">Tindakan</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -97,18 +160,22 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
                                                     <tr>
                                                         <td><?php echo $bil++; ?></td>
                                                         <td><?php echo htmlspecialchars($u['nama']); ?></td>
-                                                        <td><?php echo htmlspecialchars($u['emel']); ?></td>
+                                                        <td><?php echo htmlspecialchars($u['jawatan'] ?? '-'); ?></td>
+                                                        <td><?php echo htmlspecialchars($u['skim'] ?? '-'); ?></td>
+                                                        <td><?php echo htmlspecialchars($u['gred'] ?? '-'); ?></td>
+                                                        <td><?php echo htmlspecialchars($u['bahagian'] ?? '-'); ?></td>
                                                         <td>
                                                             <span class="badge bg-secondary">
                                                                 <?php echo htmlspecialchars($u['role'] ?? 'No Role'); ?>
                                                             </span>
                                                         </td>
-                                                        <td>
+                                                        <td style="text-align:center;">
                                                             <?php if(hasAccess($pdo, $current_user, 1, 'edit_user')): ?>
                                                             <button class="btn btn-warning btn-sm edit-user-btn" title="Edit" 
                                                                 data-user-id="<?php echo $u['id_user']; ?>" 
                                                                 data-user-name="<?php echo htmlspecialchars($u['nama'], ENT_QUOTES, 'UTF-8'); ?>" 
-                                                                data-user-email="<?php echo htmlspecialchars($u['emel'], ENT_QUOTES, 'UTF-8'); ?>" 
+                                                                data-user-jawatan="<?php echo htmlspecialchars($u['jawatan'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" 
+                                                                data-user-bahagian="<?php echo htmlspecialchars($u['bahagian'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" 
                                                                 data-user-role="<?php echo htmlspecialchars($u['role'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                                                 <i class="fas fa-edit"></i>
                                                             </button>
@@ -138,10 +205,17 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
                                                                 </div>
                                                             </div>
                                                             <div class="mb-3">
-                                                                <label for="userEmail" class="form-label">Email</label>
-                                                                <input type="email" class="form-control" id="userEmail" name="userEmail" required>
+                                                                <label for="userJawatan" class="form-label">Jawatan</label>
+                                                                <input type="text" class="form-control" id="userJawatan" name="userJawatan" required>
                                                                 <div class="invalid-feedback" style="display: none; color: #dc3545; font-size: 13px; margin-top: 5px;">
-                                                                    Email tidak sah atau kosong
+                                                                    Jawatan tidak boleh kosong
+                                                                </div>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label for="userBahagian" class="form-label">Bahagian</label>
+                                                                <input type="text" class="form-control" id="userBahagian" name="userBahagian" required>
+                                                                <div class="invalid-feedback" style="display: none; color: #dc3545; font-size: 13px; margin-top: 5px;">
+                                                                    Bahagian tidak boleh kosong
                                                                 </div>
                                                             </div>
                                                             <div class="mb-3">
@@ -173,9 +247,10 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
                                             btn.addEventListener('click', function() {
                                                 var id = this.getAttribute('data-user-id');
                                                 var name = this.getAttribute('data-user-name');
-                                                var email = this.getAttribute('data-user-email');
+                                                var jawatan = this.getAttribute('data-user-jawatan');
+                                                var bahagian = this.getAttribute('data-user-bahagian');
                                                 var role = this.getAttribute('data-user-role');
-                                                showEditUserModal(id, name, email, role);
+                                                showEditUserModal(id, name, jawatan, bahagian, role);
                                             });
                                         });
                                         
@@ -183,17 +258,18 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
                                                 document.getElementById('userModalLabel').innerText = 'Tambah User';
                                                 document.getElementById('userId').value = '';
                                                 document.getElementById('userName').value = '';
-                                                document.getElementById('userEmail').value = '';
+                                                document.getElementById('userJawatan').value = '';
+                                                document.getElementById('userBahagian').value = '';
                                                 document.getElementById('userRole').value = '';
                                                 var modal = new bootstrap.Modal(document.getElementById('userModal'));
                                                 modal.show();
                                         }
-                                        function showEditUserModal(id, name, email, role) {
+                                        function showEditUserModal(id, name, jawatan, bahagian, role) {
                                                 document.getElementById('userModalLabel').innerText = 'Ubah User';
                                                 document.getElementById('userId').value = id;
                                                 document.getElementById('userName').value = name;
-                                                document.getElementById('userEmail').value = email;
-                                                
+                                                document.getElementById('userJawatan').value = jawatan;
+                                                document.getElementById('userBahagian').value = bahagian;
                                                 // Set role value properly
                                                 var roleSelect = document.getElementById('userRole');
                                                 if (role && role !== 'null') {
@@ -201,34 +277,40 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
                                                 } else {
                                                     roleSelect.value = '';
                                                 }
-                                                
                                                 var modal = new bootstrap.Modal(document.getElementById('userModal'));
                                                 modal.show();
                                         }
                                         function submitUserForm() {
                                                 var userId = document.getElementById('userId').value;
                                                 var userName = document.getElementById('userName').value;
-                                                var userEmail = document.getElementById('userEmail').value;
+                                                var userJawatan = document.getElementById('userJawatan').value;
+                                                var userBahagian = document.getElementById('userBahagian').value;
                                                 var userRole = document.getElementById('userRole').value;
                                                 var form = document.getElementById('userForm');
                                                 
                                                 // Semak validation
                                                 var isValid = true;
                                                 var nameError = form.querySelector('[for="userName"] ~ .invalid-feedback');
-                                                var emailError = form.querySelector('[for="userEmail"] ~ .invalid-feedback');
+                                                var jawatanError = form.querySelector('[for="userJawatan"] ~ .invalid-feedback');
+                                                var bahagianError = form.querySelector('[for="userBahagian"] ~ .invalid-feedback');
                                                 var roleError = form.querySelector('[for="userRole"] ~ .invalid-feedback');
                                                 
                                                 // Reset error display
                                                 nameError.style.display = 'none';
-                                                emailError.style.display = 'none';
+                                                jawatanError.style.display = 'none';
+                                                bahagianError.style.display = 'none';
                                                 roleError.style.display = 'none';
                                                 
                                                 if (!userName) {
                                                     nameError.style.display = 'block';
                                                     isValid = false;
                                                 }
-                                                if (!userEmail || !userEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-                                                    emailError.style.display = 'block';
+                                                if (!userJawatan) {
+                                                    jawatanError.style.display = 'block';
+                                                    isValid = false;
+                                                }
+                                                if (!userBahagian) {
+                                                    bahagianError.style.display = 'block';
                                                     isValid = false;
                                                 }
                                                 if (!userRole) {
@@ -244,7 +326,8 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
                                                 formData.append('action', 'saveUser');
                                                 formData.append('userId', userId);
                                                 formData.append('userName', userName);
-                                                formData.append('userEmail', userEmail);
+                                                formData.append('userJawatan', userJawatan);
+                                                formData.append('userBahagian', userBahagian);
                                                 formData.append('userRole', userRole);
                                                 
                                                 fetch('api/rbac.php', {
@@ -279,7 +362,6 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
 
                 <!-- Roles Tab -->
                 <div class="tab-pane fade" id="roles" role="tabpanel">
-                                        <h5 class="mb-3">Senarai Roles</h5>
                                         <div class="d-flex justify-content-between align-items-center mb-3">
                                             <div class="d-flex flex-grow-1 gap-2">
                                                 <input type="text" class="form-control" id="searchRoles" placeholder="Cari nama atau deskripsi role...">
@@ -293,13 +375,13 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
                                             </div>
                                         </div>
                                         <div class="table-responsive">
-                                            <table class="table table-hover align-middle sortable-table" id="rolesTable">
-                                                <thead class="table-light">
+                                            <table class="table table-hover table-striped align-middle sortable-table" id="rolesTable">
+                                                <thead class="bg-light text-uppercase small">
                                                     <tr>
-                                                        <th style="width:50px;cursor:pointer;" onclick="sortTable('rolesTable', 0)">Bil</th>
-                                                        <th style="cursor:pointer;" onclick="sortTable('rolesTable', 1)">Nama Role</th>
-                                                        <th style="cursor:pointer;" onclick="sortTable('rolesTable', 2)">Deskripsi</th>
-                                                        <th style="width:80px;">Tindakan</th>
+                                                        <th class="py-3 px-3 text-center" width="5%">Bil</th>
+                                                        <th class="py-3">Nama Role <?php echo sortLinkRBAC('name', $sort_roles, $order_roles, 'roles'); ?></th>
+                                                        <th class="py-3">Deskripsi <?php echo sortLinkRBAC('description', $sort_roles, $order_roles, 'roles'); ?></th>
+                                                        <th style="width:80px; text-align:center;">Tindakan</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -412,7 +494,6 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
 
                 <!-- Permissions Tab -->
                 <div class="tab-pane fade" id="permissions" role="tabpanel">
-                                        <h5 class="mb-3">Senarai Permissions</h5>
                                         <div class="d-flex justify-content-between align-items-center mb-3">
                                             <div class="d-flex flex-grow-1 gap-2">
                                                 <input type="text" class="form-control" id="searchPermissions" placeholder="Cari nama atau deskripsi permission...">
@@ -426,13 +507,13 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
                                             </div>
                                         </div>
                                         <div class="table-responsive">
-                                            <table class="table table-hover align-middle sortable-table" id="permissionsTable">
-                                                <thead class="table-light">
+                                            <table class="table table-hover table-striped align-middle sortable-table" id="permissionsTable">
+                                                <thead class="bg-light text-uppercase small">
                                                     <tr>
-                                                        <th style="width:50px;cursor:pointer;" onclick="sortTable('permissionsTable', 0)">Bil</th>
-                                                        <th style="cursor:pointer;" onclick="sortTable('permissionsTable', 1)">Nama Permission</th>
-                                                        <th style="cursor:pointer;" onclick="sortTable('permissionsTable', 2)">Deskripsi</th>
-                                                        <th style="width:80px;">Tindakan</th>
+                                                        <th class="py-3 px-3 text-center" width="5%">Bil</th>
+                                                        <th class="py-3">Nama Permission <?php echo sortLinkRBAC('name', $sort_permissions, $order_permissions, 'permissions'); ?></th>
+                                                        <th class="py-3">Deskripsi <?php echo sortLinkRBAC('description', $sort_permissions, $order_permissions, 'permissions'); ?></th>
+                                                        <th style="width:80px; text-align:center;">Tindakan</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -546,55 +627,8 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
                 <!-- RBAC Overview Tab -->
                 <div class="tab-pane fade" id="overview" role="tabpanel">
                     <div class="container-fluid py-4">
-                        <h5 class="mb-4"><i class="fas fa-diagram-project me-2"></i>Cara Kerja Sistem RBAC</h5>
                         
-                        <!-- Penjelasan -->
-                        <div class="alert alert-info mb-4" role="alert">
-                            <h6 class="alert-heading mb-2">📋 RBAC (Role Based Access Control)</h6>
-                            <p class="mb-0">Sistem pengurusan akses berdasarkan peranan. MyApps menggunakan kombinasi 3 komponen: <strong>Users → Roles → Permissions</strong></p>
-                        </div>
 
-                        <!-- Diagram Aliran -->
-                        <div class="row mb-5">
-                            <div class="col-12">
-                                <div class="card shadow-sm border-0">
-                                    <div class="card-body">
-                                        <h6 class="card-title mb-4">Aliran Akses Pengguna</h6>
-                                        <div style="display: flex; justify-content: space-around; align-items: center; flex-wrap: wrap; gap: 15px;">
-                                            <!-- User -->
-                                            <div style="text-align: center; flex: 1; min-width: 150px;">
-                                                <div style="background: #007bff; color: white; padding: 15px 25px; border-radius: 8px; font-weight: bold; margin-bottom: 10px;">
-                                                    👤 Pengguna (User)
-                                                </div>
-                                                <small style="color: #666;">Contoh: Ali, Budi, Citra</small>
-                                            </div>
-
-                                            <!-- Arrow -->
-                                            <div style="font-size: 24px; color: #666;">→</div>
-
-                                            <!-- Role -->
-                                            <div style="text-align: center; flex: 1; min-width: 150px;">
-                                                <div style="background: #6c757d; color: white; padding: 15px 25px; border-radius: 8px; font-weight: bold; margin-bottom: 10px;">
-                                                    🎭 Peranan (Role)
-                                                </div>
-                                                <small style="color: #666;">Contoh: Penyedia, Penyemak, Pelulus</small>
-                                            </div>
-
-                                            <!-- Arrow -->
-                                            <div style="font-size: 24px; color: #666;">→</div>
-
-                                            <!-- Permission -->
-                                            <div style="text-align: center; flex: 1; min-width: 150px;">
-                                                <div style="background: #28a745; color: white; padding: 15px 25px; border-radius: 8px; font-weight: bold; margin-bottom: 10px;">
-                                                    🔐 Kebenaran (Permission)
-                                                </div>
-                                                <small style="color: #666;">Contoh: Create, Edit, Delete, Approve</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
                         <!-- Matriks Roles & Permissions -->
                         <div class="row mb-5">
@@ -692,7 +726,21 @@ $permissions = $pdo->query("SELECT * FROM permissions ORDER BY id_permission ASC
 function exportExcel(tableId) {
     var table = document.getElementById(tableId);
     var wb = XLSX.utils.book_new();
-    var ws = XLSX.utils.table_to_sheet(table);
+    
+    // Clone table untuk exclude column "Tindakan"
+    var clonedTable = table.cloneNode(true);
+    var rows = clonedTable.querySelectorAll('tr');
+    
+    rows.forEach(function(row) {
+        // Get semua cells dalam row
+        var cells = row.querySelectorAll('th, td');
+        // Buang cell terakhir (Tindakan column)
+        if (cells.length > 0) {
+            cells[cells.length - 1].remove();
+        }
+    });
+    
+    var ws = XLSX.utils.table_to_sheet(clonedTable);
     XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
     XLSX.writeFile(wb, tableId + ".xls");
 }

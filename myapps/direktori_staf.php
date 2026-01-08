@@ -72,9 +72,13 @@ $search = $_GET['search'] ?? '';
 $sort   = $_GET['sort'] ?? 'nama';
 $order  = $_GET['order'] ?? 'ASC';
 $page   = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$status = isset($_GET['status']) ? intval($_GET['status']) : 1; // Default: Masih Bekerja (1)
 
-$allowed_sort = ['no_kp', 'name', 'jawatan', 'skim', 'gred', 'bahagian'];
+$allowed_sort = ['no_kp', 'nama', 'jawatan', 'skim', 'gred', 'bahagian', 'emel', 'telefon'];
 if (!in_array($sort, $allowed_sort)) { $sort = 'nama'; }
+
+$allowed_status = [1, 2, 3]; // 1=Masih Bekerja, 2=Berhenti, 3=Bersara
+if (!in_array($status, $allowed_status)) { $status = 1; }
 
 $items_per_page = 20; // Items per halaman
 $offset = ($page - 1) * $items_per_page;
@@ -85,7 +89,7 @@ $sqlCount = "SELECT COUNT(*) as total FROM users u
              LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan
              LEFT JOIN gred g ON u.id_gred = g.id_gred
              LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
-             WHERE u.id_status_staf = 1 
+             WHERE u.id_status_staf = ? 
              AND (
                 u.nama LIKE ? OR 
                 u.no_kp LIKE ? OR 
@@ -97,7 +101,7 @@ $sqlCount = "SELECT COUNT(*) as total FROM users u
 
 $stmt = $db->prepare($sqlCount);
 $searchParam = "%$search%";
-$stmt->execute([$searchParam, $searchParam, $searchParam, $searchParam, $searchParam, $searchParam]);
+$stmt->execute([$status, $searchParam, $searchParam, $searchParam, $searchParam, $searchParam, $searchParam]);
 $countResult = $stmt->fetch(PDO::FETCH_ASSOC);
 $total_records = $countResult['total'];
 $total_pages = ceil($total_records / $items_per_page);
@@ -109,20 +113,13 @@ if ($page > $total_pages && $total_pages > 0) {
 }
 
 // QUERY UTAMA (View) - DENGAN PAGINATION
-// QUERY UTAMA (View) - DENGAN PAGINATION
-
 
 $sql = "SELECT u.*, j.jawatan, j.skim, g.gred, b.bahagian 
     FROM users u 
     LEFT JOIN jawatan j ON u.id_jawatan = j.id_jawatan
     LEFT JOIN gred g ON u.id_gred = g.id_gred
     LEFT JOIN bahagian b ON u.id_bahagian = b.id_bahagian
-    WHERE u.id_status_staf = 1 ";
-
-// NOTA: Saya BUANG filter 'WHERE id_staf = my_id' supaya user boleh tengok semua orang.
-// Filter hanya berlaku pada butang Edit di bawah.
-
-
+    WHERE u.id_status_staf = ? ";
 
 $sql .= " AND (
             u.nama LIKE ? OR 
@@ -136,13 +133,13 @@ $sql .= " AND (
         LIMIT $items_per_page OFFSET $offset";
 
 $stmt = $db->prepare($sql);
-$stmt->execute([$searchParam, $searchParam, $searchParam, $searchParam, $searchParam, $searchParam]);
+$stmt->execute([$status, $searchParam, $searchParam, $searchParam, $searchParam, $searchParam, $searchParam]);
 $data = $stmt->fetchAll();
 
-function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
+function sortLink($col, $currentSort, $currentOrder, $currentSearch, $currentStatus) {
     $newOrder = ($currentSort == $col && $currentOrder == 'ASC') ? 'DESC' : 'ASC';
     $icon = ($currentSort == $col) ? (($currentOrder == 'ASC') ? ' <i class="fas fa-sort-up"></i>' : ' <i class="fas fa-sort-down"></i>') : ' <i class="fas fa-sort text-muted opacity-25"></i>';
-    return "<a href='?sort=$col&order=$newOrder&search=$currentSearch' class='text-dark text-decoration-none fw-bold'>$icon</a>";
+    return "<a href='?sort=$col&order=$newOrder&search=$currentSearch&status=$currentStatus' class='text-dark text-decoration-none fw-bold'>$icon</a>";
 }
 ?>
 
@@ -153,12 +150,26 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
 </style>
 
 <div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold text-dark">
-            <i class="fas fa-users me-2 text-primary"></i> Direktori Staf
-        <!-- Butang di atas dibuang untuk elak duplikasi -->
-        </div>
-    </div>
+    <h3 class="mb-4 fw-bold text-dark"><i class="fas fa-users me-3 text-primary"></i>Direktori Staf</h3>
+
+    <!-- Status Tabs -->
+    <ul class="nav nav-tabs mb-4" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link <?php echo $status == 1 ? 'active' : ''; ?>" href="?status=1<?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>">
+                <i class="fas fa-briefcase fa-lg text-success me-2"></i>Masih Bekerja
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link <?php echo $status == 2 ? 'active' : ''; ?>" href="?status=2<?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>">
+                <i class="fas fa-star fa-lg text-warning me-2"></i>Bersara
+            </a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link <?php echo $status == 3 ? 'active' : ''; ?>" href="?status=3<?php echo !empty($search) ? '&search=' . urlencode($search) : ''; ?>">
+                <i class="fas fa-door-open fa-lg text-danger me-2"></i>Berhenti
+            </a>
+        </li>
+    </ul>
 
     <div class="card shadow-sm mb-4 border-0">
         <div class="card-body">
@@ -192,12 +203,12 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
                     <thead class="bg-light text-uppercase small">
                         <tr>
                             <th class="py-3 px-3 text-center" width="5%">BIL</th>
-                            <th class="py-3">NAMA <?php echo sortLink('nama', $sort, $order, $search); ?></th>
-                            <th class="py-3">JAWATAN <?php echo sortLink('jawatan', $sort, $order, $search); ?></th>
-                            <th class="py-3 text-center">SKIM</th>
-                            <th class="py-3 text-center">GRED</th>
-                            <th class="py-3">BAHAGIAN <?php echo sortLink('bahagian', $sort, $order, $search); ?></th>
-                            <th class="py-3 text-end px-3">AKSI</th>
+                            <th class="py-3">NAMA <?php echo sortLink('nama', $sort, $order, $search, $status); ?></th>
+                            <th class="py-3">JAWATAN <?php echo sortLink('jawatan', $sort, $order, $search, $status); ?></th>
+                            <th class="py-3 text-center">SKIM <?php echo sortLink('skim', $sort, $order, $search, $status); ?></th>
+                            <th class="py-3 text-center">GRED <?php echo sortLink('gred', $sort, $order, $search, $status); ?></th>
+                            <th class="py-3">BAHAGIAN <?php echo sortLink('bahagian', $sort, $order, $search, $status); ?></th>
+                            <th class="py-3 text-center px-3">TINDAKAN</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -221,10 +232,10 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
                                 </td>
                                 <td class="small text-muted"><?php echo $row['jawatan']; ?></td>
                                 <td class="text-center fw-bold text-secondary"><?php echo $row['skim']; ?></td>
-                                <td class="text-center"><span class="badge bg-info text-dark"><?php echo $row['gred']; ?></span></td>
+                                <td class="text-center"><?php echo $row['gred']; ?></td>
                                 <td class="small text-muted"><?php echo $row['bahagian']; ?></td>
                                 
-                                <td class="text-end px-3">
+                                <td class="text-center px-3">
                                     <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_user')): ?>
                                         <a href="proses_staf.php?id=<?php echo $row['id_user']; ?>" class="btn btn-sm btn-warning" title="Edit / Tukar Status"><i class="fas fa-edit"></i></a>
                                     <?php endif; ?>
@@ -244,7 +255,7 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
                 <ul class="pagination mb-0 justify-content-center">
                     <!-- Butang Previous -->
                     <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
-                        <a class="page-link" href="?search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>&page=<?php echo $page - 1; ?>" 
+                        <a class="page-link" href="?search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>&status=<?php echo $status; ?>&page=<?php echo $page - 1; ?>" 
                            <?php echo $page <= 1 ? 'aria-disabled="true" tabindex="-1"' : ''; ?>>
                             <i class="fas fa-chevron-left"></i> Sebelumnya
                         </a>
@@ -257,7 +268,7 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
 
                     if ($start_page > 1): ?>
                         <li class="page-item">
-                            <a class="page-link" href="?search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>&page=1">1</a>
+                            <a class="page-link" href="?search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>&status=<?php echo $status; ?>&page=1">1</a>
                         </li>
                         <?php if ($start_page > 2): ?>
                             <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -266,7 +277,7 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
 
                     <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
                         <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
-                            <a class="page-link" href="?search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>&page=<?php echo $i; ?>">
+                            <a class="page-link" href="?search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>&status=<?php echo $status; ?>&page=<?php echo $i; ?>">
                                 <?php echo $i; ?>
                             </a>
                         </li>
@@ -277,13 +288,13 @@ function sortLink($col, $currentSort, $currentOrder, $currentSearch) {
                             <li class="page-item disabled"><span class="page-link">...</span></li>
                         <?php endif; ?>
                         <li class="page-item">
-                            <a class="page-link" href="?search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>&page=<?php echo $total_pages; ?>"><?php echo $total_pages; ?></a>
+                            <a class="page-link" href="?search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>&status=<?php echo $status; ?>&page=<?php echo $total_pages; ?>"><?php echo $total_pages; ?></a>
                         </li>
                     <?php endif; ?>
 
                     <!-- Butang Next -->
                     <li class="page-item <?php echo $page >= $total_pages ? 'disabled' : ''; ?>">
-                        <a class="page-link" href="?search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>&page=<?php echo $page + 1; ?>" 
+                        <a class="page-link" href="?search=<?php echo urlencode($search); ?>&sort=<?php echo $sort; ?>&order=<?php echo $order; ?>&status=<?php echo $status; ?>&page=<?php echo $page + 1; ?>" 
                            <?php echo $page >= $total_pages ? 'aria-disabled="true" tabindex="-1"' : ''; ?>>
                             Seterusnya <i class="fas fa-chevron-right"></i>
                         </a>

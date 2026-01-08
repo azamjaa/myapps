@@ -9,7 +9,7 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
 <style>
     /* Tab Styling - Sepadankan dengan RBAC Management */
     .nav-tabs .nav-link {
-        color: #666;
+        color: #000000;
         border: none;
         border-bottom: 3px solid transparent;
         padding: 12px 16px;
@@ -29,8 +29,8 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
     }
 </style>
 
-<div class="container-fluid py-4">
-    <h3 class="fw-bold text-dark mb-4"><i class="fas fa-book-open me-2 text-primary"></i>Manual Pengguna</h3>
+<div class="container-fluid">
+    <h3 class="mb-4 fw-bold text-dark"><i class="fas fa-book-open me-3 text-primary"></i>Manual Pengguna</h3>
 
     <!-- Content Sections -->
     <div class="row">
@@ -41,37 +41,37 @@ $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_SESSION['lang']) ? $_SES
                     <ul class="nav nav-tabs" id="manualTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <a class="nav-link active" id="home-tab" data-bs-toggle="tab" href="#home" role="tab">
-                                <i class="fas fa-home me-2"></i>Pendahuluan
+                                <i class="fas fa-home fa-lg text-success me-2"></i>Pendahuluan
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" id="faq-tab" data-bs-toggle="tab" href="#faq" role="tab">
-                                <i class="fas fa-question-circle me-2"></i>Soalan Lazim (FAQ)
+                                <i class="fas fa-question-circle fa-lg text-warning me-2"></i>Soalan Lazim (FAQ)
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" id="dashboard-tab" data-bs-toggle="tab" href="#dashboard" role="tab">
-                                <i class="fas fa-chart-line me-2"></i>Dashboard
+                                <i class="fas fa-chart-line fa-lg text-primary me-2"></i>Dashboard
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" id="direktori-tab" data-bs-toggle="tab" href="#direktori" role="tab">
-                                <i class="fas fa-list me-2"></i>Direktori
+                                <i class="fas fa-list fa-lg text-info me-2"></i>Direktori
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" id="calendar-tab" data-bs-toggle="tab" href="#calendar" role="tab">
-                                <i class="fas fa-calendar me-2"></i>Kalendar
+                                <i class="fas fa-calendar fa-lg text-danger me-2"></i>Kalendar
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" id="chat-tab" data-bs-toggle="tab" href="#chat" role="tab">
-                                <i class="fas fa-comments me-2"></i>Chat
+                                <i class="fas fa-comments fa-lg text-success me-2"></i>Chat
                             </a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" id="contact-tab" data-bs-toggle="tab" href="#contact" role="tab">
-                                <i class="fas fa-headset me-2"></i>Khidmat Sokongan
+                                <i class="fas fa-headset fa-lg text-primary me-2"></i>Khidmat Sokongan
                             </a>
                         </li>
                     </ul>

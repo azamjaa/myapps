@@ -22,7 +22,7 @@ function hantarEmel($penerima, $subjek, $isi) {
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = getenv('MAIL_PORT') ?: 587;
 
-        $mail->setFrom(getenv('MAIL_USERNAME'), getenv('MAIL_FROM_NAME') ?: 'Sistem MyApps');
+        $mail->setFrom(getenv('MAIL_USERNAME'), getenv('MAIL_FROM_NAME') ?: 'MyApps KEDA');
         $mail->addAddress($penerima);
 
         $mail->isHTML(true);

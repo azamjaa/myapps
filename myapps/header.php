@@ -35,6 +35,18 @@ if ($current_user) {
     $stmt->execute([$current_user]);
     $sidebarApps = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+// 4. FORCE LOGOUT IF STAFF IS NOT ACTIVE
+if ($current_user) {
+    $stmt = $pdo->prepare("SELECT aktif FROM users WHERE id_user = ? LIMIT 1");
+    $stmt->execute([$current_user]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row && isset($row['aktif']) && $row['aktif'] == 0) {
+        session_destroy();
+        header("Location: index.php?notactive=1");
+        exit();
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="ms">

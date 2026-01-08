@@ -120,7 +120,7 @@ if (isset($_POST['send_wish'])) {
         $tahun_semasa = date('Y');
         $tarikh_sambutan = "$hari/$bulan/$tahun_semasa";
 
-        $subjek = "Selamat Hari Lahir, " . $target['nama'] . "!";
+        $subjek = "[MyApps KEDA] Selamat Hari Lahir, " . $target['nama'] . "!";
         
         $mesej  = "<div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>";
         $mesej .= "<h3 style='color: #d32f2f;'>Selamat Hari Lahir! 🎂</h3>";
@@ -128,7 +128,7 @@ if (isset($_POST['send_wish'])) {
         $mesej .= "<p>Selamat ulang tahun kelahiran diucapkan kepada <b>" . $target['nama'] . "</b> yang ke-<b>" . $umur . "</b> tahun pada <b>" . $tarikh_sambutan . "</b>.</p>";
         $mesej .= "<p>Semoga anda dipanjangkan umur, dimurahkan rezeki, diberi kesihatan yang baik, dipermudahkan segala urusan dan berbahagia selalu hendaknya.</p>";
         $mesej .= "<br><hr>";
-        $mesej .= "<p style='font-size: 12px; color: #777;'>Ikhlas daripada,<br>Pengurusan & Rakan Setugas KEDA</p>";
+        $mesej .= "<p style='font-size: 12px; color: #777;'>Ikhlas daripada,<br>Pengurus Besar, Pengurusan, dan Warga Kerja<br>Lembaga Kemajunan Wilayah Kedah (KEDA)</p>";
         $mesej .= "</div>";
 
         if (hantarEmel($target['emel'], $subjek, $mesej)) {
