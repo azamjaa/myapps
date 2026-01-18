@@ -80,7 +80,7 @@ try {
         'database' => [
             'host' => '127.0.0.1',
             'username' => 'root',
-            'password' => 'Noor@z@m1982',
+            'password' => 'keda1234',
             'database' => 'myapps'
         ],
         'app' => [

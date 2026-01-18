@@ -70,6 +70,13 @@ $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_a
         </div>
     </div>
 
+    <style>
+    /* Buang pseudo-element arrow pada summary-card jika ada */
+    .summary-card.active::after, .summary-card::after {
+        display: none !important;
+        content: none !important;
+    }
+    </style>
     <!-- Tab Content Container -->
     <div class="tab-content" id="kategoriTabContent">
         <!-- ...existing tab panes code... -->
@@ -722,23 +729,19 @@ $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_a
 }
 
 .summary-card.active {
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
-    transform: scale(1.02);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4), 0 10px 25px rgba(0,0,0,0.3) !important;
+    transform: scale(1.10);
+    z-index: 10;
+    border: 3px solid rgba(0,0,0,0.2) !important;
+}
+
+.summary-card.active:hover {
+    transform: scale(1.10) translateY(-3px);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.45), 0 15px 30px rgba(0,0,0,0.35) !important;
 }
 
 .summary-card.active::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-bottom: 10px solid transparent;
-    border-top: 10px solid #fff;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    display: none; /* Disable arrow indicator since we're using scale effect */
 }
 
 .app-card:hover {

@@ -12,6 +12,12 @@ $stmtBirthday = $db->prepare("SELECT COUNT(*) FROM users WHERE SUBSTRING(no_kp, 
 $stmtBirthday->execute([$bulanIni]);
 $cntBirthday = $stmtBirthday->fetchColumn();
 
+// Kategori Gred
+$cntTertinggi = $db->query("SELECT COUNT(*) FROM users WHERE id_status_staf = 1 AND CAST(id_gred AS UNSIGNED) >= 15")->fetchColumn();
+$cntPengurusan = $db->query("SELECT COUNT(*) FROM users WHERE id_status_staf = 1 AND CAST(id_gred AS UNSIGNED) BETWEEN 9 AND 14")->fetchColumn();
+$cntSokongan1 = $db->query("SELECT COUNT(*) FROM users WHERE id_status_staf = 1 AND CAST(id_gred AS UNSIGNED) BETWEEN 5 AND 8")->fetchColumn();
+$cntSokongan2 = $db->query("SELECT COUNT(*) FROM users WHERE id_status_staf = 1 AND CAST(id_gred AS UNSIGNED) BETWEEN 1 AND 4")->fetchColumn();
+
 // Data Chart
 $chartBahagian = $db->query("SELECT b.bahagian, COUNT(u.id_user) as total FROM users u JOIN bahagian b ON u.id_bahagian = b.id_bahagian WHERE u.id_status_staf = 1 GROUP BY b.bahagian ORDER BY total DESC")->fetchAll();
 $chartJawatan = $db->query("SELECT j.jawatan, COUNT(u.id_user) as total FROM users u JOIN jawatan j ON u.id_jawatan = j.id_jawatan WHERE u.id_status_staf = 1 GROUP BY j.jawatan ORDER BY total DESC LIMIT 5")->fetchAll();
@@ -26,7 +32,7 @@ $chartJawatan = $db->query("SELECT j.jawatan, COUNT(u.id_user) as total FROM use
             <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #10B981 !important; background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%) !important;">
                 <div class="card-body d-flex align-items-center justify-content-between">
                     <div>
-                        <h6 class="text-muted text-uppercase">Jumlah Staf</h6>
+                        <h6 class="text-muted text-uppercase">Staf</h6>
                         <h2 class="fw-bold mb-0" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"><?php echo $cntStaf; ?></h2>
                     </div>
                     <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 70px; height: 70px; background: linear-gradient(135deg, #10B981 0%, #059669 100%); flex-shrink: 0;">
@@ -70,6 +76,58 @@ $chartJawatan = $db->query("SELECT j.jawatan, COUNT(u.id_user) as total FROM use
                     </div>
                     <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 70px; height: 70px; background: linear-gradient(135deg, #4169E1 0%, #1E40AF 100%); flex-shrink: 0;">
                         <i class="fas fa-cake-candles fa-2x text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #7c3aed !important; background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 100%) !important;">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted text-uppercase">Pengurusan Tertinggi</h6>
+                        <h2 class="fw-bold mb-0" style="background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"><?php echo $cntTertinggi; ?></h2>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 70px; height: 70px; background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%); flex-shrink: 0;">
+                        <i class="fas fa-user-tie fa-2x text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #EA3680 !important; background: linear-gradient(135deg, #ffffff 0%, #dbeafe 100%) !important;">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted text-uppercase">Pengurusan & Profesional</h6>
+                        <h2 class="fw-bold mb-0" style="background: linear-gradient(135deg, #EA3680 0%, #EA3680 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"><?php echo $cntPengurusan; ?></h2>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 70px; height: 70px; background: linear-gradient(135deg, #EA3680 0%, #EA3680 100%); flex-shrink: 0;">
+                        <i class="fas fa-user-graduate fa-2x text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #EE8AF8 !important; background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%) !important;">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted text-uppercase">Sokongan 1</h6>
+                        <h2 class="fw-bold mb-0" style="background: linear-gradient(135deg, #EE8AF8 0%, #EE8AF8 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"><?php echo $cntSokongan1; ?></h2>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 70px; height: 70px; background: linear-gradient(135deg, #EE8AF8 0%, #EE8AF8 100%); flex-shrink: 0;">
+                        <i class="fas fa-user-cog fa-2x text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100" style="border-left: 5px solid #808080 !important; background: linear-gradient(135deg, #ffffff 0%, #fef2f2 100%) !important;">
+                <div class="card-body d-flex align-items-center justify-content-between">
+                    <div>
+                        <h6 class="text-muted text-uppercase">Sokongan 2</h6>
+                        <h2 class="fw-bold mb-0" style="background: linear-gradient(135deg, #808080 0%, #808080 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"><?php echo $cntSokongan2; ?></h2>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-center rounded-circle" style="width: 70px; height: 70px; background: linear-gradient(135deg, #808080 0%, #808080 100%); flex-shrink: 0;">
+                        <i class="fas fa-user fa-2x text-white"></i>
                     </div>
                 </div>
             </div>

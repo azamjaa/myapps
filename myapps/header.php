@@ -106,7 +106,7 @@ if ($current_user) {
             position: fixed;
             top: 0; left: 0;
             height: 100vh;
-            width: 260px;
+            width: 300px;
             background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
             color: white;
             z-index: 1000;
@@ -116,16 +116,16 @@ if ($current_user) {
         
         .sidebar.hidden {
             transform: translateX(-100%);
-            width: 260px;
+            width: 300px;
         }
 
         /* CONTENT AREA */
         .main-content {
-            margin-left: 260px;
+            margin-left: 300px;
             padding: 20px;
             transition: all 0.3s ease;
             min-height: 100vh;
-            width: calc(100% - 260px);
+            width: calc(100% - 300px);
         }
         
         .main-content.expanded {
@@ -135,15 +135,32 @@ if ($current_user) {
 
         /* NAV ITEMS */
         .nav-item {
-            display: block; padding: 12px 20px;
-            color: #cbd5e1; text-decoration: none;
-            transition: all 0.3s; border-left: 4px solid transparent;
+            display: block;
+            padding: 6px 16px;
+            color: #cbd5e1;
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+            margin: 0;
         }
         .nav-item:hover, .nav-item.active {
             background: rgba(255,255,255,0.1);
             color: white; border-left-color: #3b82f6;
         }
         .nav-item i { width: 25px; margin-right: 10px; text-align: center; }
+        
+        /* SUBMENU ITEMS - Permanent */
+        .submenu-item {
+            padding-left: 36px !important;
+            font-size: 0.95em;
+            background: rgba(0,0,0,0.2);
+            margin: 0;
+        }
+        .submenu-item:hover, .submenu-item.active {
+            background: rgba(0,0,0,0.3);
+            color: white;
+            border-left-color: #3b82f6;
+        }
 
         /* RESPONSIVE */
         @media (max-width: 768px) {
@@ -432,21 +449,32 @@ if ($current_user) {
 
     <!-- Menu -->
     <div class="py-2">
+        <!-- Dashboard Aplikasi -->
         <a href="dashboard_aplikasi.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='dashboard_aplikasi.php'?'active':''; ?>">
             <i class="fas fa-chart-line"></i> Dashboard Aplikasi
         </a>
+        <!-- Direktori Aplikasi - Submenu -->
+        <a href="direktori_aplikasi.php" class="nav-item submenu-item <?php echo basename($_SERVER['PHP_SELF'])=='direktori_aplikasi.php'?'active':''; ?>">
+            <i class="fas fa-list"></i> Direktori Aplikasi
+        </a>
+
         <a href="dashboard_staf.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='dashboard_staf.php'?'active':''; ?>">
             <i class="fas fa-tachometer-alt"></i> Dashboard Staf
         </a>
-        <a href="direktori_aplikasi.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='direktori_aplikasi.php'?'active':''; ?>">
-            <i class="fas fa-list"></i> Direktori Aplikasi
-        </a>
-        <a href="direktori_staf.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='direktori_staf.php'?'active':''; ?>">
+        <!-- Direktori Staf - Submenu -->
+        <a href="direktori_staf.php" class="nav-item submenu-item <?php echo basename($_SERVER['PHP_SELF'])=='direktori_staf.php'?'active':''; ?>">
             <i class="fas fa-users"></i> Direktori Staf
         </a>
-        <a href="kalendar.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='kalendar.php'?'active':''; ?>">
+        <!-- Kalendar Hari Lahir - Submenu -->
+        <a href="kalendar.php" class="nav-item submenu-item <?php echo basename($_SERVER['PHP_SELF'])=='kalendar.php'?'active':''; ?>">
             <i class="fas fa-calendar-alt"></i> Kalendar Hari Lahir
         </a>
+        <!-- Dashboard Pencapaian KEDA -->
+        <a href="dashboard_pencapaian_keda.php" class="nav-item compact-menu <?php echo basename($_SERVER['PHP_SELF'])=='dashboard_pencapaian_keda.php'?'active':''; ?>">
+            <i class="fas fa-map-marked-alt"></i> Dashboard Pencapaian KEDA
+        </a>
+            </div>
+        </div>
         <a href="manual.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='manual.php'?'active':''; ?>">
             <i class="fas fa-book-open"></i> Manual Pengguna
         </a>
@@ -459,9 +487,7 @@ if ($current_user) {
 
     <!-- Actions -->
     <div class="p-3 mt-2">
-        <a href="logout.php" class="btn btn-danger w-100 btn-sm">
-            <i class="fas fa-sign-out-alt me-1"></i> Keluar
-        </a>
+        <!-- Logout button moved to top bar; sidebar button removed -->
     </div>
 
     <!-- Sidebar aplikasi dinamik berdasarkan akses RBAC -->
@@ -481,15 +507,8 @@ if ($current_user) {
 
 <!-- MAIN CONTENT WRAPPER -->
 <div class="main-content">
-    <!-- Top Bar Mobile -->
-    <div class="d-md-none bg-white p-3 mb-3 shadow-sm rounded d-flex justify-content-between align-items-center">
-        <button class="btn btn-light" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-        <h6 class="mb-0 fw-bold">MyApps KEDA</h6>
-        <img src="image/keda.png" width="30">
-    </div>
-
-    <!-- Desktop Top Bar -->
-    <div class="d-none d-md-flex bg-white p-3 mb-4 shadow-sm rounded justify-content-between align-items-center">
+    <!-- Top Bar -->
+    <div class="top-bar bg-white p-3 mb-4 shadow-sm rounded d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-2">
             <button class="btn btn-light btn-sm" id="toggleSidebarBtn" onclick="toggleSidebarDesktop()" title="Hide/Show Menu">
                 <i class="fas fa-bars"></i>
@@ -497,15 +516,14 @@ if ($current_user) {
             <h5 class="mb-0 fw-bold text-secondary">MyApps KEDA</h5>
         </div>
         <div class="d-flex gap-2">
-            <!-- PWA Install Button -->
-            <button id="pwa-install-btn" onclick="installPWA()" class="btn btn-success btn-sm rounded-pill hidden">
-                <i class="fas fa-download me-1"></i> Install App
-            </button>
             <a href="proses_staf.php?id=<?php echo $_SESSION['user_id']; ?>" class="btn btn-outline-primary btn-sm rounded-pill">
                 <i class="fas fa-user-edit me-1"></i> Profil
             </a>
             <a href="tukar_password.php" class="btn btn-outline-secondary btn-sm rounded-pill">
                 <i class="fas fa-key me-1"></i> Password
+            </a>
+            <a href="logout.php" class="btn btn-outline-danger btn-sm rounded-pill">
+                <i class="fas fa-sign-out-alt me-1"></i> Logout
             </a>
         </div>
     </div>
