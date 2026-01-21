@@ -157,9 +157,7 @@ if (isset($_POST['login'])) {
                 // Secure Redirect
                 $allowed_redirects = [
                     'dashboard_aplikasi.php', 
-                    'dashboard_staf.php', 
-                    'direktori_staf.php', 
-                    'direktori_aplikasi.php',
+                    'dashboard_perjawatan.php', 
                     'kalendar.php'
                 ];
                 
@@ -221,164 +219,105 @@ if (isset($_GET['notactive']) && $_GET['notactive'] == 1) {
     
     <title>Log Masuk - MyApps KEDA</title>
     
-    <!-- Favicon & Icons -->
-    <link rel="icon" type="image/png" href="image/keda.png">
-    <link rel="apple-touch-icon" href="image/keda.png">
+    <link rel="icon" type="image/png" href="image/keda.png?v=2">
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
+        body {
+            /* BACKGROUND (Sama dengan lupa_katalaluan.php) */
+            background-color: #1a252f; 
+            background-image: url('image/background.jpg');
+            background-repeat: no-repeat;
+            background-position: center center;
+            background-attachment: fixed;
+            background-size: cover;
         }
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .overlay { background-color: rgba(0, 0, 0, 0); position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        
+        /* Style Kad */
+        .card-login { 
+            background: rgba(255, 255, 255, 0.98); 
+            border-radius: 15px; 
+            z-index: 2; 
+            border-top: 5px solid #d32f2f; /* Merah KEDA */
         }
-        .login-card {
-            animation: fadeInUp 0.8s ease-out;
-        }
-        .logo-float {
-            animation: float 3s ease-in-out infinite;
-        }
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
+        /* Butang Merah KEDA */
+        .btn-keda { background-color: #d32f2f; color: white; }
+        .btn-keda:hover { background-color: #b71c1c; color: white; }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-900 via-red-800 to-gray-900 relative overflow-hidden">
-    
-    <!-- Animated Background -->
-    <div class="absolute inset-0 w-full h-full overflow-hidden -z-10">
-        <img src="image/background.jpg" class="w-full h-full object-cover opacity-100" alt="Background">
-        <!-- Floating Circles -->
-        <div class="absolute top-20 left-10 w-72 h-72 bg-red-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div class="absolute bottom-20 right-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style="animation-delay: 1s;"></div>
+<body class="d-flex align-items-center justify-content-center vh-100 position-relative">
+    <div class="overlay"></div>
+    <div class="card card-login p-5 shadow-lg" style="width: 400px;">
+        <div class="text-center mb-4">
+            <img src="image/keda.png" alt="Logo KEDA" style="width: 100px; margin-bottom: 15px;">
+            <h3 class="fw-bold text-dark">MyApps</h3>
+            <p class="text-muted small">Direktori Aplikasi KEDA</p>
+        </div>
+
+        <?php if($error): ?>
+            <div class="alert alert-danger text-center small py-2"><?php echo $error; ?></div>
+        <?php endif; ?>
+        
+        <?php if($success): ?>
+            <div class="alert alert-success text-center small py-2"><?php echo $success; ?></div>
+        <?php endif; ?>
+
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary small">
+                    <?php echo $t['username'] ?? 'NO. KAD PENGENALAN'; ?> 
+                    <span class="text-danger">(TANPA "-")</span>
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-id-card text-muted"></i></span>
+                    <input type="text" 
+                           name="no_kp" 
+                           class="form-control border-start-0" 
+                           required 
+                           placeholder="Contoh: 900101011234"
+                           autocomplete="username">
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-bold text-secondary small">KATA LALUAN</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="fas fa-lock text-muted"></i></span>
+                    <input type="password" 
+                           name="password" 
+                           id="passLogin" 
+                           class="form-control border-start-0" 
+                           required 
+                           placeholder="Kata Laluan"
+                           autocomplete="current-password">
+                    <button type="button" 
+                            onclick="togglePassword('passLogin', 'iconLogin')" 
+                            class="input-group-text bg-light border-start-0 border-end-0" 
+                            style="cursor: pointer;">
+                        <i class="fas fa-eye text-muted" id="iconLogin"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <button type="submit" name="login" class="btn btn-keda w-100 py-2 fw-bold shadow-sm">
+                <i class="fas fa-sign-in-alt me-2"></i>
+                LOG MASUK
+            </button>
+            
+            <div class="text-center mt-4 pt-3 border-top">
+                <a href="lupa_katalaluan.php" class="text-decoration-none text-muted small">
+                    <i class="fas fa-key me-1"></i> Lupa Kata Laluan?
+                </a>
+            </div>
+        </form>
+        
+        <div class="text-center mt-3">
+            <small class="text-muted" style="font-size: 10px;">&copy; <?php echo date('Y'); ?> Lembaga Kemajuan Wilayah Kedah</small>
+        </div>
     </div>
     
-    <!-- Language Switcher removed - default Bahasa Melayu only -->
-    
-    <!-- Login Card -->
-    <div class="login-card relative z-10 w-full max-w-md mx-4">
-        <div class="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-10 border-t-4 border-red-600">
-            
-            <!-- Logo & Title -->
-            <div class="text-center mb-8">
-                <div class="logo-float inline-block">
-                    <img src="image/keda.png" alt="Logo KEDA" class="w-24 h-24 mx-auto mb-4 drop-shadow-lg">
-                </div>
-                <h1 class="text-3xl font-bold text-gray-800 mb-2">MyApps</h1>
-                <p class="text-sm text-gray-600">Direktori Aplikasi KEDA</p>
-            </div>
-
-            <!-- Error Message -->
-            <?php if($error): ?>
-                <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-exclamation-circle mr-3 text-xl"></i>
-                        <p class="text-sm"><?php echo $error; ?></p>
-                    </div>
-                </div>
-            <?php endif; ?>
-            
-            <?php if($success): ?>
-                <div class="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded-lg">
-                    <div class="flex items-center">
-                        <i class="fas fa-check-circle mr-3 text-xl"></i>
-                        <p class="text-sm"><?php echo $success; ?></p>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <!-- Login Form -->
-            <form method="POST" class="space-y-5">
-                
-                <!-- IC Number -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        <?php echo $t['username'] ?? 'NO. KAD PENGENALAN'; ?> 
-                        <span class="text-red-600 text-xs">(TANPA "-")</span>
-                    </label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fas fa-id-card text-gray-400"></i>
-                        </div>
-                        <input type="text" 
-                               name="no_kp" 
-                               class="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring focus:ring-red-200 transition-all outline-none" 
-                               required 
-                               placeholder="Contoh: 900101011234"
-                               autocomplete="username">
-                    </div>
-                </div>
-                
-                <!-- Password -->
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">
-                        KATA LALUAN
-                    </label>
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                            <i class="fas fa-lock text-gray-400"></i>
-                        </div>
-                        <input type="password" 
-                               name="password" 
-                               id="passLogin" 
-                               class="w-full pl-12 pr-12 py-3 border-2 border-gray-200 rounded-xl focus:border-red-500 focus:ring focus:ring-red-200 transition-all outline-none" 
-                               required 
-                               placeholder="Kata Laluan"
-                               autocomplete="current-password">
-                        <button type="button" 
-                                onclick="togglePassword('passLogin', 'iconLogin')" 
-                                class="absolute inset-y-0 right-0 pr-4 flex items-center">
-                            <i class="fas fa-eye text-gray-400 hover:text-gray-600" id="iconLogin"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Submit Button -->
-                <button type="submit" 
-                        name="login" 
-                        class="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-                    <i class="fas fa-sign-in-alt mr-2"></i>
-                    LOG MASUK
-                </button>
-                
-                <!-- Forgot Password -->
-                <div class="text-center pt-4 border-t border-gray-200">
-                    <a href="lupa_katalaluan.php" 
-                       class="text-sm text-gray-600 hover:text-red-600 transition-colors inline-flex items-center">
-                        <i class="fas fa-key mr-2"></i>
-                        Lupa Kata Laluan?
-                    </a>
-                </div>
-            </form>
-            
-            <!-- Footer -->
-            <div class="text-center mt-6 pt-6 border-t border-gray-200">
-                <p class="text-xs text-gray-500">
-                    &copy; <?php echo date('Y'); ?> Lembaga Kemajuan Wilayah Kedah (KEDA)
-                </p>
-            </div>
-        </div>
-        
-
     <script>
     // Toggle Password Visibility
     function togglePassword(inputId, iconId) {

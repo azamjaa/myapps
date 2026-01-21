@@ -106,8 +106,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error_msg)) {
     <link rel="apple-touch-icon" href="../image/keda.png">
     <!-- PWA Manifest -->
     <link rel="manifest" href="../manifest.json">
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS - Removed to avoid production warning -->
+    <!-- If needed, install Tailwind CSS properly for production: https://tailwindcss.com/docs/installation -->
+    <!--
     <script src="https://cdn.tailwindcss.com"></script>
+    -->
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>

@@ -1,5 +1,90 @@
 <?php
 require 'db.php';
+
+// ============================================================
+// EXPORT EXCEL FUNCTIONALITY
+// ============================================================
+if (isset($_GET['export'])) {
+    if (ob_get_length()) ob_end_clean();
+
+    // Dapatkan kategori untuk export (utamakan ?direktori_kategori= , fallback ?kategori= ), kosong = semua
+    $export_kat = null;
+    if (isset($_GET['direktori_kategori']) && $_GET['direktori_kategori'] !== '') {
+        $export_kat = (int)$_GET['direktori_kategori'];
+    } elseif (isset($_GET['kategori']) && $_GET['kategori'] !== '') {
+        $export_kat = (int)$_GET['kategori'];
+    }
+
+    // Valid kategori: 1=Dal, 2=Lua, 3=Guna
+    $allowed_kat = [1, 2, 3];
+    if (!in_array($export_kat, $allowed_kat, true)) {
+        $export_kat = null; // null = semua
+    }
+
+    // Label fail ikut kategori
+    $kat_labels = [
+        1 => 'Aplikasi_Dalaman',
+        2 => 'Aplikasi_Luaran',
+        3 => 'Aplikasi_Gunasama'
+    ];
+    $label = $export_kat ? $kat_labels[$export_kat] : 'Semua_Aplikasi';
+
+    $filename = "Direktori_Aplikasi_" . $label . "_" . date('Ymd') . ".xls";
+
+    header("Content-Type: application/vnd.ms-excel");
+    header("Content-Disposition: attachment; filename=\"$filename\"");
+    header("Pragma: no-cache");
+    header("Expires: 0");
+
+    echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+    echo '<head><meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+            <style>
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #000000; padding: 5px; }
+                th { background-color: #007bff; color: white; }
+            </style>
+          </head><body>';
+    
+    echo '<table>';
+    echo '<tr>
+            <th>ID</th>
+            <th>NAMA APLIKASI</th>
+            <th>KATEGORI</th>
+            <th>KETERANGAN</th>
+            <th>URL</th>
+            <th>SSO</th>
+          </tr>';
+    
+    // QUERY EXPORT: tapis kategori jika dipilih
+    $sqlExport = "SELECT a.id_aplikasi, a.nama_aplikasi, k.nama_kategori, 
+                         a.keterangan, a.url, a.sso_comply
+                  FROM aplikasi a 
+                  LEFT JOIN kategori k ON a.id_kategori = k.id_kategori
+                  WHERE a.status = 1";
+    $params = [];
+    if ($export_kat) {
+        $sqlExport .= " AND a.id_kategori = ?";
+        $params[] = $export_kat;
+    }
+    $sqlExport .= " ORDER BY a.id_kategori ASC, a.id_aplikasi ASC";
+                  
+    $stmt = $db->prepare($sqlExport);
+    $stmt->execute($params);
+    
+    while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        echo '<tr>';
+        echo '<td>' . htmlspecialchars($row['id_aplikasi'] ?? '') . '</td>';
+        echo '<td>' . htmlspecialchars($row['nama_aplikasi'] ?? '') . '</td>';
+        echo '<td>' . htmlspecialchars($row['nama_kategori'] ?? '') . '</td>';
+        echo '<td>' . htmlspecialchars($row['keterangan'] ?? '') . '</td>';
+        echo '<td>' . htmlspecialchars($row['url'] ?? '') . '</td>';
+        echo '<td style="text-align:center;">' . ($row['sso_comply'] == 1 ? '✓ SSO' : '') . '</td>';
+        echo '</tr>';
+    }
+    echo '</table></body></html>';
+    exit(); 
+}
+
 include 'header.php';
 
 // Statistik Aplikasi
@@ -8,19 +93,180 @@ $cntDalaman = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_
 $cntLuaran = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 2")->fetchColumn();
 $cntGunasama = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 3")->fetchColumn();
 $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_aplikasi) as total FROM aplikasi a JOIN kategori k ON a.id_kategori = k.id_kategori WHERE a.status = 1 GROUP BY a.id_kategori, k.nama_kategori ORDER BY a.id_kategori ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+// Data untuk Direktori Aplikasi List View
+$direktori_search = $_GET['direktori_search'] ?? '';
+$direktori_kategori = $_GET['direktori_kategori'] ?? '';
+$direktori_sort = $_GET['direktori_sort'] ?? 'id_kategori';
+$direktori_order = $_GET['direktori_order'] ?? 'ASC';
+$direktori_page = isset($_GET['direktori_page']) ? max(1, intval($_GET['direktori_page'])) : 1;
+
+$allowed_sort = ['id_kategori', 'id_aplikasi', 'nama_aplikasi', 'keterangan', 'sso_comply'];
+if (!in_array($direktori_sort, $allowed_sort)) { $direktori_sort = 'id_kategori'; }
+
+$direktori_items_per_page = 20;
+$direktori_offset = ($direktori_page - 1) * $direktori_items_per_page;
+
+// Query count untuk direktori
+$direktori_sqlCount = "SELECT COUNT(*) as total FROM aplikasi a 
+                       LEFT JOIN kategori k ON a.id_kategori = k.id_kategori 
+                       WHERE a.status = 1";
+
+if (!empty($direktori_kategori)) {
+    $direktori_sqlCount .= " AND a.id_kategori = " . intval($direktori_kategori);
+}
+if (!empty($direktori_search)) {
+    $direktori_sqlCount .= " AND (a.nama_aplikasi LIKE ? OR a.keterangan LIKE ? OR k.nama_kategori LIKE ?)";
+}
+
+$direktori_stmt = $db->prepare($direktori_sqlCount);
+if (!empty($direktori_search)) {
+    $searchParam = "%$direktori_search%";
+    $direktori_stmt->execute([$searchParam, $searchParam, $searchParam]);
+} else {
+    $direktori_stmt->execute();
+}
+$direktori_total_records = $direktori_stmt->fetch()['total'];
+$direktori_total_pages = ceil($direktori_total_records / $direktori_items_per_page);
+
+if ($direktori_page > $direktori_total_pages && $direktori_total_pages > 0) {
+    $direktori_page = $direktori_total_pages;
+    $direktori_offset = ($direktori_page - 1) * $direktori_items_per_page;
+}
+
+// Query aplikasi untuk direktori
+$direktori_sql = "SELECT a.*, k.nama_kategori
+                  FROM aplikasi a 
+                  LEFT JOIN kategori k ON a.id_kategori = k.id_kategori 
+                  WHERE a.status = 1";
+
+if (!empty($direktori_kategori)) {
+    $direktori_sql .= " AND a.id_kategori = " . intval($direktori_kategori);
+}
+if (!empty($direktori_search)) {
+    $direktori_sql .= " AND (a.nama_aplikasi LIKE ? OR a.keterangan LIKE ? OR k.nama_kategori LIKE ?)";
+}
+
+// Handle sorting
+if ($direktori_sort === 'kategori') {
+    $direktori_sql .= " ORDER BY k.nama_kategori $direktori_order, a.id_aplikasi ASC";
+} elseif ($direktori_sort === 'id_kategori') {
+    $direktori_sql .= " ORDER BY a.id_kategori $direktori_order, a.id_aplikasi ASC";
+} else {
+    $direktori_sql .= " ORDER BY $direktori_sort $direktori_order";
+}
+$direktori_sql .= " LIMIT $direktori_items_per_page OFFSET $direktori_offset";
+
+$direktori_stmt = $db->prepare($direktori_sql);
+if (!empty($direktori_search)) {
+    $searchParam = "%$direktori_search%";
+    $direktori_stmt->execute([$searchParam, $searchParam, $searchParam]);
+} else {
+    $direktori_stmt->execute();
+}
+$direktori_data = $direktori_stmt->fetchAll();
+
+// Get kategori list untuk direktori
+$direktori_kategoriList = $db->query("SELECT id_kategori, nama_kategori FROM kategori WHERE aktif = 1 ORDER BY id_kategori ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+// Count by kategori untuk direktori
+$direktori_allApps = $db->query("SELECT id_kategori, COUNT(*) as total FROM aplikasi WHERE status = 1 GROUP BY id_kategori")->fetchAll(PDO::FETCH_KEY_PAIR);
+
+// Function untuk sort link dalam direktori
+function direktoriSortLink($col, $currentSort, $currentOrder, $currentSearch, $currentKat) {
+    $sortField = $col;
+    if ($col === 'KATEGORI') { $sortField = 'id_kategori'; }
+    if ($col === 'APLIKASI') { $sortField = 'nama_aplikasi'; }
+    
+    $newOrder = ($currentSort == $sortField && $currentOrder == 'ASC') ? 'DESC' : 'ASC';
+    $icon = ($currentSort == $sortField) ? (($currentOrder == 'ASC') ? ' <i class="fas fa-sort-up"></i>' : ' <i class="fas fa-sort-down"></i>') : ' <i class="fas fa-sort text-muted opacity-25"></i>';
+    
+    $params = http_build_query([
+        'direktori_search' => $currentSearch,
+        'direktori_kategori' => $currentKat,
+        'direktori_sort' => $sortField,
+        'direktori_order' => $newOrder,
+        'direktori_page' => 1
+    ]);
+    
+    return "<a href='?$params#direktoriAplikasiContainer' class='text-dark text-decoration-none fw-bold'>$icon</a>";
+}
+
+// Get last updated date from aplikasi table
+$lastUpdated = null;
+try {
+    // Try to get MAX(updated_at) first
+    $dateStmt = $db->query("SELECT MAX(updated_at) as last_updated FROM aplikasi WHERE status = 1");
+    $dateRow = $dateStmt->fetch(PDO::FETCH_ASSOC);
+    if ($dateRow && $dateRow['last_updated']) {
+        $lastUpdated = $dateRow['last_updated'];
+    } else {
+        // Fallback to created_at if updated_at doesn't exist
+        try {
+            $dateStmt = $db->query("SELECT MAX(created_at) as last_updated FROM aplikasi WHERE status = 1");
+            $dateRow = $dateStmt->fetch(PDO::FETCH_ASSOC);
+            if ($dateRow && $dateRow['last_updated']) {
+                $lastUpdated = $dateRow['last_updated'];
+            }
+        } catch (Exception $e2) {
+            // If created_at also doesn't exist, try to get from audit_log
+            try {
+                $auditStmt = $db->query("SELECT MAX(created_at) as last_updated FROM audit_log WHERE table_affected = 'aplikasi' ORDER BY created_at DESC LIMIT 1");
+                $auditRow = $auditStmt->fetch(PDO::FETCH_ASSOC);
+                if ($auditRow && $auditRow['last_updated']) {
+                    $lastUpdated = $auditRow['last_updated'];
+                }
+            } catch (Exception $e3) {
+                // Use current date as fallback
+                $lastUpdated = date('Y-m-d H:i:s');
+            }
+        }
+    }
+} catch (Exception $e) {
+    // If updated_at column doesn't exist, try other methods
+    try {
+        $dateStmt = $db->query("SELECT MAX(created_at) as last_updated FROM aplikasi WHERE status = 1");
+        $dateRow = $dateStmt->fetch(PDO::FETCH_ASSOC);
+        if ($dateRow && $dateRow['last_updated']) {
+            $lastUpdated = $dateRow['last_updated'];
+        } else {
+            // Use current date as fallback
+            $lastUpdated = date('Y-m-d H:i:s');
+        }
+    } catch (Exception $e2) {
+        // Use current date as final fallback
+        $lastUpdated = date('Y-m-d H:i:s');
+    }
+}
+
+// Ensure we always have a date to display
+if (!$lastUpdated) {
+    $lastUpdated = date('Y-m-d H:i:s');
+}
 ?>
 
 <div class="container-fluid">
-    <h3 class="mb-4 fw-bold text-dark"><i class="fas fa-chart-line me-3 text-primary"></i>Dashboard Aplikasi</h3>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0 fw-bold text-dark"><i class="fas fa-chart-line me-3 text-primary"></i>Dashboard Aplikasi</h3>
+        <?php
+        // Always display date - use formatted date or current date
+        if ($lastUpdated) {
+            $formattedDate = date('d/m/Y H:i', strtotime($lastUpdated));
+        } else {
+            $formattedDate = date('d/m/Y H:i');
+        }
+        echo '<small class="text-muted"><i class="fas fa-clock me-1"></i>Rekod dikemaskini: ' . htmlspecialchars($formattedDate) . '</small>';
+        ?>
+    </div>
     <!-- Clickable Summary Statistics Cards as Tabs -->
     <div class="row g-4 mb-4">
         <!-- ...existing summary cards code... -->
         <?php /* The summary cards code block remains unchanged, just moved inside main content */ ?>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100 summary-card active" data-bs-toggle="pill" data-bs-target="#semua" role="tab" style="border-left: 5px solid #10B981 !important; cursor: pointer; background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%) !important;">
+            <div class="card border-0 shadow-sm h-100 summary-card" data-bs-toggle="pill" data-bs-target="#semua" role="tab" style="border-left: 5px solid #10B981 !important; cursor: pointer; background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%) !important;">
                 <div class="card-body d-flex align-items-center justify-content-between">
                     <div>
-                        <h6 class="text-muted text-uppercase">Jumlah Aplikasi</h6>
+                        <h6 class="text-muted text-uppercase">Senarai Aplikasi</h6>
                         <h2 class="fw-bold mb-0" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"><?php echo $cntAplikasi; ?></h2>
                     </div>
                     <div class="p-3 rounded-circle" style="background: linear-gradient(135deg, #10B981 0%, #059669 100%);">
@@ -30,7 +276,7 @@ $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_a
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card border-0 shadow-sm h-100 summary-card" data-bs-toggle="pill" data-bs-target="#dalaman" role="tab" style="border-left: 5px solid #F59E0B !important; cursor: pointer; background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%) !important;">
+            <div class="card border-0 shadow-sm h-100 summary-card active" data-bs-toggle="pill" data-bs-target="#dalaman" role="tab" style="border-left: 5px solid #F59E0B !important; cursor: pointer; background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%) !important;">
                 <div class="card-body d-flex align-items-center justify-content-between">
                     <div>
                         <h6 class="text-muted text-uppercase">Aplikasi Dalaman</h6>
@@ -76,13 +322,46 @@ $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_a
         display: none !important;
         content: none !important;
     }
+    
+    /* Styling untuk direktori aplikasi */
+    .nama-link { 
+        color: #0d6efd; 
+        font-weight: 600; 
+        text-decoration: none; 
+    }
+    .nama-link:hover { 
+        text-decoration: underline; 
+        color: #0a58ca; 
+    }
+    .nav-tabs .nav-link {
+        color: #666;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 12px 16px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .nav-tabs .nav-link:hover {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+    }
+    .nav-tabs .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+        background-color: transparent;
+    }
+    
+    /* Hide tab content (grid cards) when direktori is shown */
+    body.show-direktori .tab-content > .tab-pane:not(#direktori-semua):not([id^="direktori-kat-"]) {
+        display: none !important;
+    }
     </style>
     <!-- Tab Content Container -->
     <div class="tab-content" id="kategoriTabContent">
         <!-- ...existing tab panes code... -->
         <!-- The tab panes code block remains unchanged, just moved inside main content -->
-        <!-- TAB: SEMUA -->
-        <div class="tab-pane fade show active" id="semua" role="tabpanel">
+        <!-- TAB: SEMUA (Grid Cards View - Hidden when direktori is shown) -->
+        <div class="tab-pane fade" id="semua" role="tabpanel">
     
     <?php
     // Get all applications grouped by category
@@ -594,7 +873,7 @@ $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_a
         </div><!-- End TAB: SEMUA -->
         
         <!-- TAB: DALAMAN ONLY -->
-        <div class="tab-pane fade" id="dalaman" role="tabpanel">
+        <div class="tab-pane fade show active" id="dalaman" role="tabpanel">
             <div class="mb-5">
                 <div class="row g-2">
                     <?php if (empty($aplikasiDalaman)): ?>
@@ -714,6 +993,246 @@ $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_a
         </div><!-- End TAB: GUNASAMA -->
         
     </div><!-- End Tab Content -->
+    
+    <!-- Direktori Aplikasi List View - Muncul di bawah kad-kad apabila kad "Senarai Aplikasi" diklik -->
+    <div id="direktoriAplikasiContainer" style="display: none; margin-top: 2rem;">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="fas fa-list me-2 text-primary"></i>Senarai Aplikasi
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Nav Tabs untuk Direktori -->
+                <ul class="nav nav-tabs mb-4" role="tablist" id="direktoriTabs">
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link active" id="direktori-semua-tab" data-bs-toggle="tab" href="#direktori-semua" role="tab" onclick="loadDirektoriTab('')">
+                            <i class="fas fa-th fa-lg text-success me-2"></i>Semua Aplikasi (<?php echo $direktori_total_records; ?>)
+                        </a>
+                    </li>
+                    <?php foreach ($direktori_kategoriList as $kat): ?>
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="direktori-kat-<?php echo $kat['id_kategori']; ?>-tab" data-bs-toggle="tab" href="#direktori-kat-<?php echo $kat['id_kategori']; ?>" role="tab">
+                            <?php
+                            $icon = 'fa-th'; $color = 'text-success';
+                            if ($kat['id_kategori'] == 1) { $icon = 'fa-cube'; $color = 'text-warning'; }
+                            elseif ($kat['id_kategori'] == 2) { $icon = 'fa-globe'; $color = 'text-danger'; }
+                            elseif ($kat['id_kategori'] == 3) { $icon = 'fa-share-alt'; $color = 'text-primary'; }
+                            ?>
+                            <i class="fas <?php echo $icon; ?> fa-lg <?php echo $color; ?> me-2"></i><?php echo htmlspecialchars($kat['nama_kategori']); ?> (<?php echo $direktori_allApps[$kat['id_kategori']] ?? 0; ?>)
+                        </a>
+                    </li>
+                    <?php endforeach; ?>
+                </ul>
+
+                <!-- Tab Content untuk Direktori -->
+                <div class="tab-content" id="direktoriTabContent">
+                    <!-- Semua Aplikasi Tab -->
+                    <div class="tab-pane fade show active" id="direktori-semua" role="tabpanel">
+                        <!-- Search Card -->
+                        <div class="card shadow-sm mb-4 border-0" style="background-color: #f8f9fa;">
+                            <div class="card-body">
+                                <form method="get" class="mb-0" id="direktoriSearchForm">
+                                    <input type="hidden" name="direktori_kategori" value="<?php echo htmlspecialchars($direktori_kategori); ?>">
+                                    <input type="hidden" name="direktori_sort" value="<?php echo htmlspecialchars($direktori_sort); ?>">
+                                    <input type="hidden" name="direktori_order" value="<?php echo htmlspecialchars($direktori_order); ?>">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="d-flex flex-grow-1 gap-2">
+                                            <input type="text" name="direktori_search" class="form-control" placeholder="Cari nama aplikasi, kategori, atau keterangan..." value="<?php echo htmlspecialchars($direktori_search); ?>">
+                                            <button class="btn btn-primary d-flex align-items-center justify-content-center" type="submit" style="min-width:120px;">
+                                                <span class="me-2"><i class="fas fa-search"></i></span>
+                                                <span>Cari</span>
+                                            </button>
+                                        </div>
+                                        <div class="d-flex gap-2 ms-2">
+                                            <?php 
+                                            // Check if user is admin or super_admin
+                                            $checkAdmin = $db->prepare("SELECT COUNT(*) as cnt FROM user_roles ur 
+                                                                        JOIN roles r ON ur.id_role = r.id_role 
+                                                                        WHERE ur.id_user = ? AND r.name IN ('admin', 'super_admin')");
+                                            $checkAdmin->execute([$_SESSION['user_id']]);
+                                            $is_admin = $checkAdmin->fetch()['cnt'] > 0;
+                                            ?>
+                                            <?php if($is_admin): ?>
+                                                <a href="proses_aplikasi.php" class="btn btn-primary"><i class="fas fa-plus"></i> Tambah Aplikasi</a>
+                                            <?php endif; ?>
+                                            <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'export_data')): ?>
+                                                <a href="dashboard_aplikasi.php?export=1<?php echo ($direktori_kategori !== '') ? '&direktori_kategori=' . urlencode($direktori_kategori) : ''; ?>" class="btn btn-success" target="_blank"><i class="fas fa-file-excel"></i> Export Excel</a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Table View -->
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle mb-0">
+                                <thead class="bg-light text-uppercase small">
+                                    <tr>
+                                        <th class="py-3 px-3 text-center" width="5%">BIL</th>
+                                        <th class="py-3">APLIKASI <?php echo direktoriSortLink('nama_aplikasi', $direktori_sort, $direktori_order, $direktori_search, $direktori_kategori); ?></th>
+                                        <th class="py-3">KATEGORI <?php echo direktoriSortLink('kategori', $direktori_sort, $direktori_order, $direktori_search, $direktori_kategori); ?></th>
+                                        <th class="py-3">KETERANGAN <?php echo direktoriSortLink('keterangan', $direktori_sort, $direktori_order, $direktori_search, $direktori_kategori); ?></th>
+                                        <th class="py-3 text-center">SSO <?php echo direktoriSortLink('sso_comply', $direktori_sort, $direktori_order, $direktori_search, $direktori_kategori); ?></th>
+                                        <th class="py-3 text-center px-3">TINDAKAN</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if(count($direktori_data) > 0): ?>
+                                        <?php $bil = ($direktori_page - 1) * $direktori_items_per_page + 1; foreach($direktori_data as $row): ?>
+                                        <tr>
+                                            <td class="text-center fw-bold text-muted">
+                                                <?php echo $bil++; ?>
+                                            </td>
+                                            <td>
+                                                <a href="<?php echo htmlspecialchars($row['url']); ?>" target="_blank" class="nama-link" style="color: #0d6efd; font-weight: 600; text-decoration: none;">
+                                                    <?php echo htmlspecialchars($row['nama_aplikasi']); ?>
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <?php
+                                                // Get color based on kategori id
+                                                $badgeColor = '#007bff'; // Default blue
+                                                if ($row['id_kategori'] == 1) $badgeColor = '#F59E0B'; // Orange for Dalaman
+                                                elseif ($row['id_kategori'] == 2) $badgeColor = '#EF4444'; // Red for Luaran
+                                                elseif ($row['id_kategori'] == 3) $badgeColor = '#4169E1'; // Blue for Gunasama
+                                                ?>
+                                                <span class="badge" style="background-color: <?php echo $badgeColor; ?>; color: white;">
+                                                    <?php echo htmlspecialchars($row['nama_kategori'] ?? '-'); ?>
+                                                </span>
+                                            </td>
+                                            <td class="small text-muted">
+                                                <?php echo htmlspecialchars(substr($row['keterangan'] ?? '', 0, 60)); ?>
+                                                <?php echo strlen($row['keterangan'] ?? '') > 60 ? '...' : ''; ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <?php if ($row['sso_comply'] == 1): ?>
+                                                    <span class="badge bg-success">✓ SSO</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center px-3">
+                                                <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_application')): ?>
+                                                    <a href="proses_aplikasi.php?id=<?php echo $row['id_aplikasi']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
+                                                <?php endif; ?>
+                                                <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'delete_application')): ?>
+                                                    <a href="javascript:void(0);" class="btn btn-sm btn-danger" title="Padam" onclick="confirmDeleteAplikasi(<?php echo $row['id_aplikasi']; ?>, '<?php echo htmlspecialchars(addslashes($row['nama_aplikasi'])); ?>')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr><td colspan="6" class="text-center py-5 text-muted">Tiada aplikasi dijumpai.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- PAGINATION -->
+                        <?php if($direktori_total_pages > 1): ?>
+                        <nav aria-label="Navigasi Halaman" class="p-3 border-top">
+                            <ul class="pagination mb-0 justify-content-center">
+                                <li class="page-item <?php echo $direktori_page <= 1 ? 'disabled' : ''; ?>">
+                                    <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['direktori_page' => $direktori_page - 1])); ?>#direktoriAplikasiContainer">Previous</a>
+                                </li>
+                                <?php for ($i = 1; $i <= $direktori_total_pages; $i++): ?>
+                                    <li class="page-item <?php echo $direktori_page == $i ? 'active' : ''; ?>">
+                                        <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['direktori_page' => $i])); ?>#direktoriAplikasiContainer">
+                                            <?php echo $i; ?>
+                                        </a>
+                                    </li>
+                                <?php endfor; ?>
+                                <li class="page-item <?php echo $direktori_page >= $direktori_total_pages ? 'disabled' : ''; ?>">
+                                    <a class="page-link" href="?<?php echo http_build_query(array_merge($_GET, ['direktori_page' => $direktori_page + 1])); ?>#direktoriAplikasiContainer">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Tab untuk setiap kategori dalam direktori -->
+                    <?php foreach ($direktori_kategoriList as $kat): 
+                        // Query untuk aplikasi dalam kategori ini
+                        $direktori_sqlKat = "SELECT a.*, k.nama_kategori 
+                                          FROM aplikasi a 
+                                          LEFT JOIN kategori k ON a.id_kategori = k.id_kategori 
+                                          WHERE a.status = 1 AND a.id_kategori = ?
+                                          ORDER BY a.id_aplikasi ASC";
+                        $direktori_stmtKat = $db->prepare($direktori_sqlKat);
+                        $direktori_stmtKat->execute([$kat['id_kategori']]);
+                        $direktori_dataKat = $direktori_stmtKat->fetchAll();
+                    ?>
+                    <div class="tab-pane fade" id="direktori-kat-<?php echo $kat['id_kategori']; ?>" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped align-middle mb-0">
+                                <thead class="bg-light text-uppercase small">
+                                    <tr>
+                                        <th class="py-3 px-3 text-center" width="5%">BIL</th>
+                                        <th class="py-3">APLIKASI</th>
+                                        <th class="py-3">KATEGORI</th>
+                                        <th class="py-3">KETERANGAN</th>
+                                        <th class="py-3 text-center">SSO</th>
+                                        <th class="py-3 text-center px-3">TINDAKAN</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if(count($direktori_dataKat) > 0): ?>
+                                        <?php $bil = 1; foreach($direktori_dataKat as $row): ?>
+                                        <tr>
+                                            <td class="text-center fw-bold text-muted"><?php echo $bil++; ?></td>
+                                            <td>
+                                                <a href="<?php echo htmlspecialchars($row['url']); ?>" target="_blank" class="nama-link" style="color: #0d6efd; font-weight: 600; text-decoration: none;">
+                                                    <?php echo htmlspecialchars($row['nama_aplikasi']); ?>
+                                                </a>
+                                            </td>
+                                            <td>
+                                                <?php
+                                                // Get color based on kategori id
+                                                $badgeColor = '#007bff'; // Default blue
+                                                if ($row['id_kategori'] == 1) $badgeColor = '#F59E0B'; // Orange for Dalaman
+                                                elseif ($row['id_kategori'] == 2) $badgeColor = '#EF4444'; // Red for Luaran
+                                                elseif ($row['id_kategori'] == 3) $badgeColor = '#4169E1'; // Blue for Gunasama
+                                                ?>
+                                                <span class="badge" style="background-color: <?php echo $badgeColor; ?>; color: white;">
+                                                    <?php echo htmlspecialchars($row['nama_kategori'] ?? '-'); ?>
+                                                </span>
+                                            </td>
+                                            <td class="small text-muted">
+                                                <?php echo htmlspecialchars(substr($row['keterangan'] ?? '', 0, 60)); ?>
+                                                <?php echo strlen($row['keterangan'] ?? '') > 60 ? '...' : ''; ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <?php if ($row['sso_comply'] == 1): ?>
+                                                    <span class="badge bg-success">✓ SSO</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center px-3">
+                                                <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_application')): ?>
+                                                    <a href="proses_aplikasi.php?id=<?php echo $row['id_aplikasi']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
+                                                <?php endif; ?>
+                                                <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'delete_application')): ?>
+                                                    <a href="javascript:void(0);" class="btn btn-sm btn-danger" title="Padam" onclick="confirmDeleteAplikasi(<?php echo $row['id_aplikasi']; ?>, '<?php echo htmlspecialchars(addslashes($row['nama_aplikasi'])); ?>')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </a>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <tr><td colspan="6" class="text-center py-5 text-muted">Tiada aplikasi dijumpai.</td></tr>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+    
 </div><!-- End Container -->
 
 <style>
@@ -759,6 +1278,7 @@ $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_a
 // Handle active state for summary cards and tab switching
 document.addEventListener('DOMContentLoaded', function() {
     const summaryCards = document.querySelectorAll('.summary-card');
+    const direktoriContainer = document.getElementById('direktoriAplikasiContainer');
     
     summaryCards.forEach(card => {
         card.addEventListener('click', function() {
@@ -771,19 +1291,95 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get the target tab
             const target = this.getAttribute('data-bs-target');
             
-            // Hide all tab panes
-            document.querySelectorAll('.tab-pane').forEach(pane => {
-                pane.classList.remove('show', 'active');
-            });
+            // Check if clicked card is "Senarai Aplikasi" (target="#semua")
+            const isSenaraiAplikasi = target === '#semua';
             
-            // Show the target tab pane
-            const targetPane = document.querySelector(target);
-            if (targetPane) {
-                targetPane.classList.add('show', 'active');
+            // Show/hide direktori aplikasi container dan tab content
+            if (isSenaraiAplikasi) {
+                // Show direktori aplikasi container
+                if (direktoriContainer) {
+                    direktoriContainer.style.display = 'block';
+                    // Add class to body to hide grid cards
+                    document.body.classList.add('show-direktori');
+                    // Smooth scroll to direktori container
+                    setTimeout(() => {
+                        direktoriContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                }
+                
+                // Hide all tab content (grid cards view) - ensure they're hidden
+                document.querySelectorAll('#kategoriTabContent .tab-pane').forEach(pane => {
+                    pane.classList.remove('show', 'active');
+                    pane.style.display = 'none';
+                });
+            } else {
+                // Hide direktori aplikasi container for other cards
+                if (direktoriContainer) {
+                    direktoriContainer.style.display = 'none';
+                }
+                
+                // Remove class from body to show grid cards
+                document.body.classList.remove('show-direktori');
+                
+                // Show the target tab pane (grid cards view)
+                document.querySelectorAll('#kategoriTabContent .tab-pane').forEach(pane => {
+                    pane.classList.remove('show', 'active');
+                    pane.style.display = 'none';
+                });
+                
+                const targetPane = document.querySelector(target);
+                if (targetPane) {
+                    targetPane.classList.add('show', 'active');
+                    targetPane.style.display = 'block';
+                }
             }
         });
     });
+    
+    // On page load, if "Senarai Aplikasi" card is active or if direktori params exist, show direktori
+    const senaraiCard = document.querySelector('.summary-card[data-bs-target="#semua"]');
+    const hasDirektoriParams = window.location.search.includes('direktori_') || window.location.hash === '#direktoriAplikasiContainer';
+    
+    if (hasDirektoriParams && senaraiCard && direktoriContainer) {
+        // Paksa aktifkan kad Senarai Aplikasi & tunjuk direktori
+        document.querySelectorAll('.summary-card').forEach(c => c.classList.remove('active'));
+        senaraiCard.classList.add('active');
+        document.body.classList.add('show-direktori');
+        direktoriContainer.style.display = 'block';
+        document.querySelectorAll('#kategoriTabContent .tab-pane').forEach(pane => {
+            pane.classList.remove('show', 'active');
+            pane.style.display = 'none';
+        });
+        setTimeout(() => {
+            direktoriContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 200);
+    } else if (senaraiCard && senaraiCard.classList.contains('active')) {
+        if (direktoriContainer) {
+            document.body.classList.add('show-direktori');
+            direktoriContainer.style.display = 'block';
+            document.querySelectorAll('#kategoriTabContent .tab-pane').forEach(pane => {
+                pane.classList.remove('show', 'active');
+                pane.style.display = 'none';
+            });
+        }
+    } else {
+        if (direktoriContainer) direktoriContainer.style.display = 'none';
+        document.body.classList.remove('show-direktori');
+        const dalamanPane = document.querySelector('#dalaman');
+        if (dalamanPane) {
+            dalamanPane.classList.add('show', 'active');
+            dalamanPane.style.display = 'block';
+        }
+    }
 });
+
+// Function to confirm delete aplikasi
+function confirmDeleteAplikasi(id, name) {
+    if (confirm("Anda pasti mahu padam aplikasi \"" + name + "\"?\n\nTindakan ini tidak boleh dibatalkan.")) {
+        // Redirect to proses_aplikasi.php with delete action
+        window.location.href = "proses_aplikasi.php?action=delete&id=" + id + "&redirect=" + encodeURIComponent(window.location.href);
+    }
+}
 </script>
 
 </body>

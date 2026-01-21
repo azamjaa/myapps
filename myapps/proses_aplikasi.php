@@ -9,7 +9,7 @@ $checkAdmin->execute([$_SESSION['user_id']]);
 $is_admin = $checkAdmin->fetch()['cnt'] > 0;
 
 if (!$is_admin) {
-    header("Location: direktori_aplikasi.php");
+    header("Location: dashboard_aplikasi.php#direktoriAplikasiContainer");
     exit();
 }
 
@@ -33,7 +33,7 @@ if ($edit_mode) {
     $aplikasi_data = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$aplikasi_data) {
-        header("Location: direktori_aplikasi.php");
+        header("Location: dashboard_aplikasi.php#direktoriAplikasiContainer");
         exit();
     }
 }
@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['success_msg'] = "Aplikasi '$nama_aplikasi' berjaya ditambah!";
         }
 
-        header("Location: direktori_aplikasi.php");
+        header("Location: dashboard_aplikasi.php#direktoriAplikasiContainer");
         exit();
 
     } catch (Exception $e) {
@@ -186,7 +186,7 @@ $kategoriList = $db->query("SELECT id_kategori, nama_kategori FROM kategori WHER
                     <button type="submit" class="btn <?php echo $edit_mode ? 'btn-warning' : 'btn-primary'; ?> px-4">
                         <i class="fas fa-save me-2"></i> <?php echo $edit_mode ? 'Kemaskini' : 'Simpan'; ?> Aplikasi
                     </button>
-                    <a href="direktori_aplikasi.php" class="btn btn-secondary px-4">
+                    <a href="dashboard_aplikasi.php" class="btn btn-secondary px-4">
                         <i class="fas fa-times me-2"></i> Batal
                     </a>
                 </div>

@@ -271,7 +271,7 @@ try {
         echo "Execution time: {$executionTime}s\n";
         echo "========================================\n";
         echo "</pre>";
-        echo "<p><a href='dashboard_pencapaian_keda.php'>Back to Dashboard</a></p>";
+        echo "<p><a href='dashboard_pencapaian.php'>Back to Dashboard</a></p>";
         echo "</div></body></html>";
     }
     
@@ -283,7 +283,7 @@ try {
     } else {
         echo "\n<span class='error'>$errorMsg</span>\n";
         echo "</pre>";
-        echo "<p><a href='dashboard_pencapaian_keda.php'>Back to Dashboard</a></p>";
+        echo "<p><a href='dashboard_pencapaian.php'>Back to Dashboard</a></p>";
         echo "</div></body></html>";
     }
     

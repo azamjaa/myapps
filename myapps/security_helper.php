@@ -53,9 +53,7 @@ function secureRedirect($location, $allowed_paths = []) {
     if (empty($allowed_paths)) {
         $allowed_paths = [
             'dashboard_aplikasi.php',
-            'dashboard_staf.php',
-            'direktori_staf.php',
-            'direktori_aplikasi.php',
+            'dashboard_perjawatan.php',
             'kalendar.php',
             'index.php',
             'logout.php'

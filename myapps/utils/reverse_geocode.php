@@ -7,6 +7,14 @@
 require_once __DIR__ . '/../db.php';
 
 /**
+ * Check if coordinates are within Kedah bounds (quick check)
+ */
+function isWithinKedahBounds($lng, $lat, $bounds) {
+    return ($lat >= $bounds['minLat'] && $lat <= $bounds['maxLat'] &&
+            $lng >= $bounds['minLng'] && $lng <= $bounds['maxLng']);
+}
+
+/**
  * Check if a point is inside a polygon
  * Uses ray casting algorithm
  */
@@ -62,6 +70,16 @@ function getCoordinatesFromGeometry($geometry) {
         case 'MultiPolygon':
             if (isset($geometry['coordinates'][0][0][0])) {
                 return $geometry['coordinates'][0][0][0];
+            }
+            break;
+        case 'LineString':
+            if (isset($geometry['coordinates'][0])) {
+                return $geometry['coordinates'][0];
+            }
+            break;
+        case 'MultiLineString':
+            if (isset($geometry['coordinates'][0][0])) {
+                return $geometry['coordinates'][0][0];
             }
             break;
     }
@@ -181,6 +199,30 @@ function reverseGeocode($lng, $lat, $db) {
     }
     
     return $result;
+}
+
+/**
+ * Check if record has GPS coordinates
+ */
+function hasGPS($geometry) {
+    if (!$geometry || !isset($geometry['type'])) {
+        return false;
+    }
+    
+    $coords = getCoordinatesFromGeometry($geometry);
+    if (!$coords || count($coords) < 2) {
+        return false;
+    }
+    
+    $lng = floatval($coords[0]);
+    $lat = floatval($coords[1]);
+    
+    // Check if coordinates are valid
+    if ($lng == 0 && $lat == 0) {
+        return false;
+    }
+    
+    return true;
 }
 
 /**

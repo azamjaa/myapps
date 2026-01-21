@@ -133,6 +133,6 @@ try {
 
 if (!$isCli) {
     echo "</pre>";
-    echo "<p><a href='../dashboard_pencapaian_keda.php'>Back to Dashboard</a></p>";
+    echo "<p><a href='../dashboard_pencapaian.php'>Back to Dashboard</a></p>";
     echo "</body></html>";
 }

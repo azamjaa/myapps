@@ -14,7 +14,7 @@ const STATIC_ASSETS = [
     '/myapps/image/mawar.png',
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
     'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-    'https://cdn.tailwindcss.com',
+    // 'https://cdn.tailwindcss.com', // Removed - not recommended for production
     'https://cdn.jsdelivr.net/npm/chart.js'
 ];
 

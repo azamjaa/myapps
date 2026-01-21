@@ -11,7 +11,7 @@ if (isset($_POST['save_new'])) {
     $has_create_permission = hasAccess($pdo, $_SESSION['user_id'], 1, 'create_user');
     
     if (!$has_create_permission) {
-        echo "<script>alert('⛔ Anda Tidak Dibenarkan Akses Halaman Ini.\n\nHubungi admin untuk mendapat akses.'); window.location='direktori_staf.php';</script>"; exit();
+        echo "<script>alert('⛔ Anda Tidak Dibenarkan Akses Halaman Ini.\n\nHubungi admin untuk mendapat akses.'); window.location='dashboard_perjawatan.php#direktoriStafContainer';</script>"; exit();
     }
     try {
         $db->beginTransaction();
@@ -36,7 +36,7 @@ if (isset($_POST['save_new'])) {
         $db->prepare("INSERT INTO login (id_user, password_hash) VALUES (?, ?)")->execute([$new_id, $default_hash]);
 
         $db->commit();
-        echo "<script>alert('Berjaya ditambah!'); window.location='direktori_staf.php';</script>";
+        echo "<script>alert('Berjaya ditambah!'); window.location='dashboard_perjawatan.php#direktoriStafContainer';</script>";
     } catch (PDOException $e) {
         $db->rollBack();
         echo "<script>alert('Gagal tambah.'); window.history.back();</script>";
@@ -56,7 +56,7 @@ if (isset($_POST['update'])) {
     // User biasa boleh edit profil sendiri sahaja (field terhad)
     // Admin/Super Admin boleh edit sesiapa (full access)
     if (!$has_edit_user_permission && !$is_own_profile) {
-        echo "<script>alert('⛔ Anda Tidak Dibenarkan Akses Halaman Ini.\n\nAnda hanya boleh edit profil sendiri.'); window.location='direktori_staf.php';</script>"; exit();
+        echo "<script>alert('⛔ Anda Tidak Dibenarkan Akses Halaman Ini.\n\nAnda hanya boleh edit profil sendiri.'); window.location='dashboard_perjawatan.php#direktoriStafContainer';</script>"; exit();
     }
 
     try {
@@ -93,7 +93,7 @@ if (isset($_POST['update'])) {
             $_SESSION['gambar'] = $nama_gambar;
         }
 
-        echo "<script>alert('Maklumat dikemaskini!'); window.location='direktori_staf.php';</script>";
+        echo "<script>alert('Maklumat dikemaskini!'); window.location='dashboard_perjawatan.php#direktoriStafContainer';</script>";
     } catch (Exception $e) {
         $error_msg = 'Gagal kemaskini: ' . $e->getMessage();
         echo "<script>alert('".addslashes($error_msg)."'); window.history.back();</script>";
@@ -283,7 +283,7 @@ $disabledJawatan = ($currentUserRole == 'user') ? 'disabled' : '';
                         </div>
 
                         <div class="d-flex justify-content-end gap-2">
-                            <a href="direktori_staf.php" class="btn btn-light border">Batal</a>
+                            <a href="dashboard_perjawatan.php#direktoriStafContainer" class="btn btn-light border">Batal</a>
                             <button type="submit" name="<?php echo $btnName; ?>" class="btn btn-primary px-4">Simpan</button>
                         </div>
                     </form>

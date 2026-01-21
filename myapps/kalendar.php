@@ -1,6 +1,20 @@
 <?php
 require 'db.php';
-include 'header.php';
+
+// Embed mode: hide sidebar/header when ?embed=1
+$isEmbed = isset($_GET['embed']);
+
+if (!$isEmbed) {
+    include 'header.php';
+} else {
+    echo '<!DOCTYPE html><html><head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Kalendar Hari Lahir</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    </head><body class="embed-mode" style="background: transparent; padding: 0; margin: 0;">';
+}
 
 $events = [];
 $current_year = date('Y');
@@ -137,10 +151,32 @@ try {
             min-height: 50px;
         }
     }
+    /* Embed mode: remove padding/background/frame */
+    body.embed-mode {
+        background: transparent;
+        padding: 0;
+        margin: 0;
+    }
+    body.embed-mode .container-fluid {
+        padding: 0;
+        margin: 0;
+    }
+    body.embed-mode #calendar {
+        margin: 0;
+    }
+    body.embed-mode .fc-theme-standard .fc-scrollgrid {
+        border: none;
+    }
+    body.embed-mode .fc-theme-standard td,
+    body.embed-mode .fc-theme-standard th {
+        border: 1px solid #dcdcdc;
+    }
 </style>
 
 <div class="container-fluid">
+    <?php if (!$isEmbed): ?>
     <h3 class="mb-4 fw-bold text-dark"><i class="fas fa-calendar-alt me-3 text-primary"></i>Kalendar Hari Lahir</h3>
+    <?php endif; ?>
     <div class="card shadow-sm border-0">
         <div class="card-body p-4">
             <div id='calendar'></div>
@@ -193,7 +229,9 @@ try {
     </div>
 </div>
 
+<?php if ($isEmbed): ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<?php endif; ?>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var calendarEl = document.getElementById('calendar');
@@ -260,8 +298,10 @@ document.addEventListener('DOMContentLoaded', function() {
     calendar.render();
 });
 </script>
+<?php if ($isEmbed): ?>
 </body>
 </html>
+<?php endif; ?>
 
 <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'export_data')): ?>
 <!-- Butang Export Excel di sini -->

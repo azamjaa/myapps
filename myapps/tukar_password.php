@@ -113,7 +113,7 @@ if (isset($_POST['change_pass'])) {
 
                         <div class="d-grid gap-2">
                             <button type="submit" name="change_pass" class="btn btn-primary fw-bold">Simpan Kata Laluan</button>
-                            <a href="dashboard_staf.php" class="btn btn-light text-muted">Batal</a>
+                            <a href="dashboard_perjawatan.php" class="btn btn-light text-muted">Batal</a>
                         </div>
                     </form>
                 </div>

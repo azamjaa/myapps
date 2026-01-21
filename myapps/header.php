@@ -60,6 +60,9 @@ if ($current_user) {
     <meta name="apple-mobile-web-app-title" content="MyApps KEDA">
     <title>MyApps KEDA</title>
     
+    <!-- Content Security Policy - Allow unsafe-eval for Turf.js and Chart.js -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://*.jsdelivr.net https://*.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://*.jsdelivr.net https://*.cloudflare.com; img-src 'self' data: blob: https://cdn-icons-png.flaticon.com https://*.tile.openstreetmap.org https://*.tile.osm.org https://*.basemaps.cartocdn.com; font-src 'self' data: https://cdnjs.cloudflare.com https://*.cloudflare.com; connect-src 'self' http://localhost:11434 https://cdn.jsdelivr.net https://unpkg.com https://*.jsdelivr.net https://*.cloudflare.com https://*.tile.openstreetmap.org https://*.tile.osm.org https://*.basemaps.cartocdn.com; worker-src 'self' blob:; child-src 'self' blob:;">
+    
     <link rel="icon" type="image/png" href="image/keda.png?v=<?php echo time(); ?>">
     <link rel="apple-touch-icon" href="image/keda.png">
     
@@ -70,7 +73,9 @@ if ($current_user) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS - Removed to avoid production warning -->
+    <!-- If needed, install Tailwind CSS properly for production: https://tailwindcss.com/docs/installation -->
+    <!--
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -78,6 +83,7 @@ if ($current_user) {
             corePlugins: { preflight: false }
         }
     </script>
+    -->
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -453,26 +459,28 @@ if ($current_user) {
         <a href="dashboard_aplikasi.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='dashboard_aplikasi.php'?'active':''; ?>">
             <i class="fas fa-chart-line"></i> Dashboard Aplikasi
         </a>
-        <!-- Direktori Aplikasi - Submenu -->
-        <a href="direktori_aplikasi.php" class="nav-item submenu-item <?php echo basename($_SERVER['PHP_SELF'])=='direktori_aplikasi.php'?'active':''; ?>">
-            <i class="fas fa-list"></i> Direktori Aplikasi
-        </a>
 
-        <a href="dashboard_staf.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='dashboard_staf.php'?'active':''; ?>">
-            <i class="fas fa-tachometer-alt"></i> Dashboard Staf
-        </a>
-        <!-- Direktori Staf - Submenu -->
-        <a href="direktori_staf.php" class="nav-item submenu-item <?php echo basename($_SERVER['PHP_SELF'])=='direktori_staf.php'?'active':''; ?>">
-            <i class="fas fa-users"></i> Direktori Staf
-        </a>
-        <!-- Kalendar Hari Lahir - Submenu -->
-        <a href="kalendar.php" class="nav-item submenu-item <?php echo basename($_SERVER['PHP_SELF'])=='kalendar.php'?'active':''; ?>">
-            <i class="fas fa-calendar-alt"></i> Kalendar Hari Lahir
+        <a href="dashboard_perjawatan.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='dashboard_perjawatan.php'?'active':''; ?>">
+            <i class="fas fa-tachometer-alt"></i> Dashboard Perjawatan
         </a>
         <!-- Dashboard Pencapaian KEDA -->
-        <a href="dashboard_pencapaian_keda.php" class="nav-item compact-menu <?php echo basename($_SERVER['PHP_SELF'])=='dashboard_pencapaian_keda.php'?'active':''; ?>">
-            <i class="fas fa-map-marked-alt"></i> Dashboard Pencapaian KEDA
+        <a href="dashboard_pencapaian.php" class="nav-item compact-menu <?php echo basename($_SERVER['PHP_SELF'])=='dashboard_pencapaian.php'?'active':''; ?>">
+            <i class="fas fa-map-marked-alt"></i> Dashboard Pencapaian
         </a>
+        <!-- Pengurusan Rekod Dashboard - Submenu (Admin Only) -->
+        <?php 
+        // Check if user is admin
+        $current_user = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : (isset($_SESSION['id_user']) ? $_SESSION['id_user'] : null);
+        $isAdmin = false;
+        if ($current_user) {
+            require_once __DIR__ . '/src/rbac_helper.php';
+            $isAdmin = isSuperAdmin($pdo, $current_user);
+        }
+        if ($isAdmin): ?>
+        <a href="pengurusan_rekod_dashboard.php" class="nav-item submenu-item <?php echo basename($_SERVER['PHP_SELF'])=='pengurusan_rekod_dashboard.php'?'active':''; ?>">
+            <i class="fas fa-file-alt"></i> Pengurusan Rekod Dashboard
+        </a>
+        <?php endif; ?>
             </div>
         </div>
         <a href="manual.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='manual.php'?'active':''; ?>">

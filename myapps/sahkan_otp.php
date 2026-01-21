@@ -35,7 +35,7 @@ if (isset($_POST['verify_otp'])) {
         unset($_SESSION['temp_role']);
         
         // Masuk ke Dashboard
-        header("Location: dashboard_staf.php");
+        header("Location: dashboard_perjawatan.php");
         exit();
     } else {
         $msg = "<div class='alert alert-danger text-center small'>Kod OTP salah atau telah tamat tempoh.</div>";
