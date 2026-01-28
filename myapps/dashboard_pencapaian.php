@@ -146,6 +146,57 @@ function getProfessionalNameFromKategori($kategori) {
     return ucwords(str_replace(['_', '-'], ' ', $kategori));
 }
 
+// Function to calculate count with deduplication (same logic as API)
+function getDeduplicatedCount($db, $kategori) {
+    try {
+        $stmt = $db->prepare("SELECT properties, geometry FROM geojson_data WHERE kategori = ?");
+        $stmt->execute([$kategori]);
+        
+        $seenFeatures = [];
+        $validCount = 0;
+        $errorCount = 0;
+        
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            // Decode properties
+            $props = json_decode($row['properties'], true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $errorCount++;
+                continue;
+            }
+            
+            // Decode geometry
+            $geom = json_decode($row['geometry'], true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $errorCount++;
+                continue;
+            }
+            
+            // Only count if both decoded successfully
+            if ($props !== null && $geom !== null) {
+                // Create unique identifier for duplicate detection (same as API)
+                $name = $props['name'] ?? $props['NAME'] ?? $props['NAMA'] ?? '';
+                $geomHash = md5(json_encode($geom));
+                $uniqueKey = strtolower(trim($name)) . '|' . $geomHash;
+                
+                // Check for duplicates
+                if (!isset($seenFeatures[$uniqueKey])) {
+                    $seenFeatures[$uniqueKey] = true;
+                    $validCount++;
+                }
+            }
+        }
+        
+        return $validCount;
+    } catch (Exception $e) {
+        error_log("Error calculating deduplicated count for kategori '$kategori': " . $e->getMessage());
+        // Fallback to simple count if deduplication fails
+        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM geojson_data WHERE kategori = ?");
+        $countStmt->execute([$kategori]);
+        $countRow = $countStmt->fetch(PDO::FETCH_ASSOC);
+        return intval($countRow['total']);
+    }
+}
+
 // Get all kategori from database ONLY (exclude sempadan files)
 $excludedFiles = ['negeri', 'daerah', 'parlimen', 'dun'];
 $cardsData = [];
@@ -158,11 +209,8 @@ try {
     foreach ($kategoriList as $kategori) {
         $professionalName = getProfessionalNameFromKategori($kategori);
         
-        // Get count from database
-        $countStmt = $db->prepare("SELECT COUNT(*) as total FROM geojson_data WHERE kategori = ?");
-        $countStmt->execute([$kategori]);
-        $countRow = $countStmt->fetch(PDO::FETCH_ASSOC);
-        $count = intval($countRow['total']);
+        // Get count with deduplication (same logic as API)
+        $count = getDeduplicatedCount($db, $kategori);
         
         // Get last updated date for this kategori
         // Check if table has updated_at or created_at field
@@ -261,12 +309,12 @@ if (!$defaultCard && count($cardsData) > 0) {
 // Color scheme - 10 warna unik yang berbeza untuk setiap kad
 $colorList = [
     ['#10B981', '#059669', '#f0fdf4', 'fa-home'],                    // Hijau - Kediaman
-    ['#F59E0B', '#D97706', '#fffbeb', 'fa-store'],                   // Kuning - IKS/Usahawan
+    ['#F59E0B', '#D97706', '#fffbeb', 'fa-industry'],                   // Kuning - IKS/Usahawan
     ['#EF4444', '#DC2626', '#fef2f2', 'fa-graduation-cap'],          // Merah - Kolej
     ['#4169E1', '#1E40AF', '#eff6ff', 'fa-hands-helping'],            // Biru - Bantuan Kampung
     ['#7c3aed', '#6366f1', '#e0e7ff', 'fa-paw'],                     // Ungu - Ternakan
     ['#06B6D4', '#0891B2', '#e0f2fe', 'fa-road'],                    // Cyan - Jalan
-    ['#EA3680', '#EA3680', '#fdf2f8', 'fa-store'],                   // Pink - IKS
+    ['#EA3680', '#EA3680', '#fdf2f8', 'fa-industry'],                   // Pink - IKS
     ['#16A085', '#138D75', '#e8f8f5', 'fa-landmark'],                // Teal - Aset & Tanah
     ['#E67E22', '#D35400', '#fef5e7', 'fa-file-contract'],           // Orange - Sewaan
     ['#95A5A6', '#7F8C8D', '#f8f9fa', 'fa-hand-holding']            // Grey - Diserah
@@ -310,9 +358,9 @@ function getColorIcon($idx, $kategori) {
         'JALAN.*PERHUBUNGAN' => ['#06B6D4', '#0891B2', '#e0f2fe', 'fa-road'],
         
         // Perniagaan & IKS
-        'IKS' => ['#EA3680', '#EA3680', '#fdf2f8', 'fa-store'],
-        'PERNIAGaan' => ['#EA3680', '#EA3680', '#fdf2f8', 'fa-store'],
-        'INDUSTRI.*KECIL.*SEDERHANA' => ['#EA3680', '#EA3680', '#fdf2f8', 'fa-store'],
+        'IKS' => ['#EA3680', '#EA3680', '#fdf2f8', 'fa-industry'],
+        'PERNIAGaan' => ['#EA3680', '#EA3680', '#fdf2f8', 'fa-industry'],
+        'INDUSTRI.*KECIL.*SEDERHANA' => ['#EA3680', '#EA3680', '#fdf2f8', 'fa-industry'],
         
         // Rekod Guna Tanah - Purple
         'GUNA.*TANAH' => ['#9333EA', '#7C3AED', '#faf5ff', 'fa-landmark'],
@@ -462,7 +510,7 @@ function getColorIcon($idx, $kategori) {
                             <i class="fas fa-chart-pie me-2"></i>Pecahan Mengikut Daerah, Parlimen dan DUN
                         </h6>
                         <div class="d-flex align-items-center gap-2">
-                            <select id="distributionType" class="form-select form-select-sm" style="width: auto; max-width: 150px;" onchange="updateDistributionChart()">
+                            <select id="distributionType" class="form-select form-select-sm" style="width: auto; max-width: 180px; padding-right: 3.2rem; text-align-last: left; background-position: right 0.4rem center;" onchange="updateDistributionChart()">
                                 <option value="DAERAH" selected>Daerah</option>
                                 <option value="PARLIMEN">Parlimen</option>
                                 <option value="DUN">DUN</option>
@@ -503,12 +551,6 @@ function getColorIcon($idx, $kategori) {
                         <h6 class="m-0 font-weight-bold text-primary mb-0" id="recordsTitle">
                             <i class="fas fa-list me-2"></i>Senarai Rekod
                         </h6>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-primary" id="recordsCount">0 rekod</span>
-                            <button class="btn btn-sm btn-success" onclick="exportRecordsToExcel()" id="exportBtn" style="display: none;">
-                                <i class="fas fa-file-excel me-1"></i>Export Excel
-                            </button>
-                        </div>
                     </div>
                 </div>
                 <div class="card-body">
@@ -2784,17 +2826,27 @@ function updateDaerahChart(data, fieldType = 'DAERAH') {
         return;
     }
     
+    // Use actual count from _meta if available (same as card count), otherwise use features.length
+    // This ensures chart subtitle matches card count
+    if (data._meta && data._meta.features_count !== undefined) {
+        totalRecords = data._meta.features_count;
+        console.log(`📊 Using _meta.features_count for chart subtitle: ${totalRecords} (matches card count)`);
+    } else {
+        totalRecords = data.features.length;
+        console.log(`📊 Using features.length for chart subtitle: ${totalRecords} (no _meta available)`);
+    }
+    
     // Count records by field type
     // Use a temporary map to deduplicate case-insensitive keys
     const countMap = new Map(); // Map<uppercase_key, {original: first_occurrence, count: number}>
     
+    // Count records with/without data from actual features array
     data.features.forEach(feature => {
         if (!feature || !feature.properties) {
             console.warn('Feature missing properties:', feature);
             return;
         }
         
-        totalRecords++;
         const value = feature.properties?.[fieldType];
         
         // Check if value is empty, null, undefined, or just whitespace
@@ -2820,6 +2872,16 @@ function updateDaerahChart(data, fieldType = 'DAERAH') {
             countMap.get(countKey).count++;
         }
     });
+    
+    // If totalRecords from _meta is different from features.length, adjust recordsWithData/recordsWithoutData proportionally
+    // This handles cases where API returns deduplicated count but we need to show accurate breakdown
+    if (data._meta && data._meta.features_count !== undefined && data._meta.features_count !== data.features.length) {
+        const actualFeaturesCount = data.features.length;
+        const ratio = totalRecords / actualFeaturesCount;
+        recordsWithData = Math.round(recordsWithData * ratio);
+        recordsWithoutData = totalRecords - recordsWithData;
+        console.log(`📊 Adjusted counts to match _meta.features_count: ratio=${ratio.toFixed(3)}, recordsWithData=${recordsWithData}, recordsWithoutData=${recordsWithoutData}`);
+    }
     
     // Convert map to count object using canonical names
     count = {};
@@ -4239,19 +4301,12 @@ function displayRecords(data) {
         if (container) {
             container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-info-circle fa-2x mb-3"></i><p>Tiada rekod untuk dipaparkan</p></div>';
         }
-        const countBadge = document.getElementById('recordsCount');
-        if (countBadge) {
-            countBadge.textContent = '0 rekod';
-        }
-        const exportBtn = document.getElementById('exportBtn');
-        if (exportBtn) {
-            exportBtn.style.display = 'none';
-        }
+        // Count display is now shown below filter section
+        // Export button is now always visible in filter section
         return;
     }
     
     const container = document.getElementById('recordsContainer');
-    const countBadge = document.getElementById('recordsCount');
     const exportBtn = document.getElementById('exportBtn');
     const recordsTitle = document.getElementById('recordsTitle');
     
@@ -4363,24 +4418,84 @@ function displayRecords(data) {
     console.log('📊 Display columns determined:', finalDisplayColumns);
     console.log('📊 Total unique columns:', finalDisplayColumns.length);
     
-    // Show export button
-    if (exportBtn) {
-        exportBtn.style.display = 'inline-block';
-    }
+    // Export button is now always visible in filter section
     
-    // Create filter row
+    // Columns that should use text input instead of dropdown (too many unique values or ID fields)
+    const textInputColumns = ['OBJECTID', 'NO_KP', 'NO_KP1', 'Nombor_Rumah', 'Nombor_Lot', 'id', 'ID'];
+    
+    // Collect unique values for each column for dropdown filters
+    const columnUniqueValues = {};
+    displayColumns.forEach(col => {
+        const colUpper = col.toUpperCase();
+        // Skip if this column should use text input
+        if (textInputColumns.some(tc => colUpper.includes(tc))) {
+            return;
+        }
+        
+        const uniqueSet = new Set();
+        recordsData.forEach(f => {
+            const propValue = f.properties?.[col];
+            if (propValue !== undefined && propValue !== null && propValue !== '') {
+                const strValue = String(propValue).trim();
+                if (strValue) {
+                    uniqueSet.add(strValue);
+                }
+            }
+        });
+        // Only use dropdown if unique values are reasonable (less than 200)
+        // If more than 200 unique values, it's better to use text input
+        if (uniqueSet.size > 0 && uniqueSet.size <= 200) {
+            // Sort unique values alphabetically
+            columnUniqueValues[col] = Array.from(uniqueSet).sort((a, b) => {
+                return String(a).localeCompare(String(b), 'en', { sensitivity: 'base' });
+            });
+        }
+    });
+    
+    // Create filter row with dropdown menus or text inputs
     let html = '<div class="mb-3">';
     html += '<div class="row g-2">';
     displayColumns.forEach(col => {
         const displayName = col === 'name' || col === 'NAME' || col === 'NAMA' ? 'Nama' : col;
+        const colUpper = col.toUpperCase();
+        const useTextInput = textInputColumns.some(tc => colUpper.includes(tc)) || 
+                            (columnUniqueValues[col] === undefined);
+        const uniqueValues = columnUniqueValues[col] || [];
+        
         html += '<div class="col-md-3 col-lg-2">';
-        html += `<input type="text" class="form-control form-control-sm" id="filter_${col}" placeholder="Filter ${displayName}" onkeyup="applyFilters()">`;
+        html += `<label class="form-label small text-muted mb-1">${displayName}</label>`;
+        
+        if (useTextInput) {
+            // Use text input for ID fields or columns with too many unique values
+            html += `<input type="text" class="form-control form-control-sm" id="filter_${col}" placeholder="Filter ${displayName}" onkeyup="applyFilters()">`;
+        } else {
+            // Use dropdown for columns with reasonable number of unique values
+            html += `<select class="form-select form-select-sm" id="filter_${col}" onchange="applyFilters()">`;
+            html += `<option value="">Semua ${displayName}</option>`;
+            uniqueValues.forEach(value => {
+                const displayValue = String(value).length > 50 ? String(value).substring(0, 50) + '...' : String(value);
+                html += `<option value="${String(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;')}">${displayValue}</option>`;
+            });
+            html += '</select>';
+        }
         html += '</div>';
     });
-    html += '<div class="col-md-3 col-lg-2">';
-    html += '<button class="btn btn-sm btn-outline-secondary w-100" onclick="clearFilters()"><i class="fas fa-times me-1"></i>Clear</button>';
+    html += '</div>'; // Close filter inputs row
+    html += '<div class="row g-2 mt-2">'; // New row for buttons
+    html += '<div class="col-md-3 col-lg-2 d-flex align-items-end">';
+    html += '<button class="btn btn-sm btn-warning w-100" onclick="clearFilters()"><i class="fas fa-times me-1"></i>Clear Filter</button>';
     html += '</div>';
+    html += '<div class="col-md-3 col-lg-2 d-flex align-items-end">';
+    html += '<button class="btn btn-sm btn-success w-100" onclick="exportRecordsToExcel()" id="exportBtn"><i class="fas fa-file-excel me-1"></i>Export Excel</button>';
     html += '</div>';
+    html += '</div>'; // Close buttons row
+    html += '</div>'; // Close mb-3 div
+    
+    // Count Display (same style as list view staf)
+    html += '<div class="d-flex justify-content-between align-items-center mt-2 mb-3">';
+    html += '<span class="text-muted small">';
+    html += 'Menunjukkan <strong id="showingFrom">0</strong> - <strong id="showingTo">0</strong> daripada <strong id="totalRecords">0</strong> rekod';
+    html += '</span>';
     html += '</div>';
     
     // Create table
@@ -4395,7 +4510,6 @@ function displayRecords(data) {
         html += `<th style="cursor: pointer;" onclick="sortRecords('${col}')">${displayName} <i class="fas fa-sort"></i></th>`;
     });
     
-    html += '<th style="width: 80px;">Tindakan</th>';
     html += '</tr>';
     html += '</thead>';
     html += '<tbody id="recordsTableBody">';
@@ -4405,9 +4519,7 @@ function displayRecords(data) {
     
     // Pagination
     html += '<div class="d-flex justify-content-between align-items-center mt-3">';
-    html += '<div>';
-    html += `<span class="text-muted">Menunjukkan <strong id="showingFrom">0</strong> - <strong id="showingTo">0</strong> daripada <strong id="totalRecords">0</strong> rekod</span>`;
-    html += '</div>';
+    html += '<div></div>'; // Empty div for spacing
     html += '<nav>';
     html += '<ul class="pagination pagination-sm mb-0" id="pagination">';
     html += '</ul>';
@@ -4424,29 +4536,45 @@ function displayRecords(data) {
 
 // Function to apply filters
 function applyFilters() {
-    // Get all filter inputs
+    // Get all filter inputs (both selects and text inputs)
     const filterInputs = document.querySelectorAll('[id^="filter_"]');
     filters = {};
     
     filterInputs.forEach(input => {
         const field = input.id.replace('filter_', '');
-        const value = input.value.trim().toLowerCase();
+        const value = input.value.trim();
         if (value) {
-            filters[field] = value;
+            // Check if it's a select (dropdown) or text input
+            const isSelect = input.tagName === 'SELECT';
+            if (isSelect) {
+                // For dropdown, use exact match (case-insensitive)
+                filters[field] = { value: value.toLowerCase(), exact: true };
+            } else {
+                // For text input, use partial match (case-insensitive)
+                filters[field] = { value: value.toLowerCase(), exact: false };
+            }
         }
     });
     
     // Apply filters
     filteredRecords = recordsData.filter(f => {
         const props = f.properties || {};
-        for (const [field, filterValue] of Object.entries(filters)) {
+        for (const [field, filterObj] of Object.entries(filters)) {
             const propValue = props[field];
             if (propValue === undefined || propValue === null) {
                 return false;
             }
-            const propStr = String(propValue).toLowerCase();
-            if (!propStr.includes(filterValue)) {
-                return false;
+            const propStr = String(propValue).trim().toLowerCase();
+            if (filterObj.exact) {
+                // Exact match for dropdown
+                if (propStr !== filterObj.value) {
+                    return false;
+                }
+            } else {
+                // Partial match for text input
+                if (!propStr.includes(filterObj.value)) {
+                    return false;
+                }
             }
         }
         return true;
@@ -4561,17 +4689,11 @@ function updateRecordsDisplay() {
     const showingFrom = document.getElementById('showingFrom');
     const showingTo = document.getElementById('showingTo');
     const totalRecords = document.getElementById('totalRecords');
-    const countBadge = document.getElementById('recordsCount');
     
     if (!tbody) return;
     
     const total = sortedRecords.length;
     const totalPages = Math.ceil(total / recordsPerPage);
-    
-    // Update count badge
-    if (countBadge) {
-        countBadge.textContent = `${total} rekod`;
-    }
     
     // Update total records
     if (totalRecords) {
@@ -4592,7 +4714,7 @@ function updateRecordsDisplay() {
     if (columns.length === 0) {
         // Fallback: get from table header
         const headers = Array.from(document.querySelectorAll('#recordsTable thead th'));
-        const rawColumns = headers.slice(1, -1).map(th => {
+        const rawColumns = headers.slice(1).map(th => {
             const onclick = th.getAttribute('onclick');
             if (onclick) {
                 const match = onclick.match(/sortRecords\('([^']+)'\)/);
@@ -4657,20 +4779,11 @@ function updateRecordsDisplay() {
             rowHtml += `<td>${displayValue}</td>`;
         });
         
-        // Action button
-        rowHtml += '<td>';
-        rowHtml += `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); showRecordDetails(${originalIndex})" title="Lihat Detail">`;
-        rowHtml += '<i class="fas fa-eye"></i>';
-        rowHtml += '</button>';
-        rowHtml += '</td>';
-        
         row.innerHTML = rowHtml;
         
-        // Add click event
+        // Add click event - klik pada mana-mana field untuk view detail
         row.addEventListener('click', function(e) {
-            if (!e.target.closest('button')) {
-                showRecordDetails(originalIndex);
-            }
+            showRecordDetails(originalIndex);
         });
         
         tbody.appendChild(row);

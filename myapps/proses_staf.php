@@ -11,7 +11,21 @@ if (isset($_POST['save_new'])) {
     $has_create_permission = hasAccess($pdo, $_SESSION['user_id'], 1, 'create_user');
     
     if (!$has_create_permission) {
-        echo "<script>alert('⛔ Anda Tidak Dibenarkan Akses Halaman Ini.\n\nHubungi admin untuk mendapat akses.'); window.location='dashboard_perjawatan.php#direktoriStafContainer';</script>"; exit();
+        $redirectParams = '';
+        if (isset($_GET['direktori_staf_search']) || isset($_GET['direktori_staf_status'])) {
+            $redirectParams = '?' . http_build_query(array_filter([
+                'direktori_staf_search' => $_GET['direktori_staf_search'] ?? '',
+                'direktori_staf_status' => $_GET['direktori_staf_status'] ?? '',
+                'direktori_staf_sort' => $_GET['direktori_staf_sort'] ?? '',
+                'direktori_staf_order' => $_GET['direktori_staf_order'] ?? '',
+                'direktori_staf_page' => $_GET['direktori_staf_page'] ?? ''
+            ]));
+        } elseif (isset($_SERVER['HTTP_REFERER'])) {
+            $refQuery = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_QUERY);
+            if ($refQuery) $redirectParams = '?' . $refQuery;
+        }
+        $redirectUrl = 'dashboard_perjawatan.php' . $redirectParams . '#direktoriStafContainer';
+        echo "<script>alert('⛔ Anda Tidak Dibenarkan Akses Halaman Ini.\n\nHubungi admin untuk mendapat akses.'); window.location='$redirectUrl';</script>"; exit();
     }
     try {
         $db->beginTransaction();
@@ -25,9 +39,16 @@ if (isset($_POST['save_new'])) {
         $sql = "INSERT INTO users (no_staf, no_kp, nama, emel, telefon, id_jawatan, id_gred, id_bahagian, gambar, id_status_staf) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
         $stmt = $db->prepare($sql);
+        // Convert all text fields to uppercase
+        $no_staf = mb_strtoupper(trim($_POST['no_staf'] ?? ''), 'UTF-8');
+        $no_kp = mb_strtoupper(trim($_POST['no_kp'] ?? ''), 'UTF-8');
+        $nama = mb_strtoupper(trim($_POST['nama'] ?? ''), 'UTF-8');
+        $emel = mb_strtolower(trim($_POST['emel'] ?? ''), 'UTF-8'); // Email tetap lowercase
+        $telefon = mb_strtoupper(trim($_POST['telefon'] ?? ''), 'UTF-8');
+        
         $stmt->execute([
-            $_POST['no_staf'], $_POST['no_kp'], strtoupper($_POST['nama']), 
-            $_POST['emel'], $_POST['telefon'], $_POST['id_jawatan'], 
+            $no_staf, $no_kp, $nama, 
+            $emel, $telefon, $_POST['id_jawatan'], 
             $_POST['id_gred'], $_POST['id_bahagian'], $gambar
         ]);
         
@@ -36,7 +57,22 @@ if (isset($_POST['save_new'])) {
         $db->prepare("INSERT INTO login (id_user, password_hash) VALUES (?, ?)")->execute([$new_id, $default_hash]);
 
         $db->commit();
-        echo "<script>alert('Berjaya ditambah!'); window.location='dashboard_perjawatan.php#direktoriStafContainer';</script>";
+        // Preserve query parameters from GET or referrer
+        $redirectParams = '';
+        if (isset($_GET['direktori_staf_search']) || isset($_GET['direktori_staf_status']) || isset($_GET['direktori_staf_sort']) || isset($_GET['direktori_staf_page'])) {
+            $redirectParams = '?' . http_build_query(array_filter([
+                'direktori_staf_search' => $_GET['direktori_staf_search'] ?? '',
+                'direktori_staf_status' => $_GET['direktori_staf_status'] ?? '',
+                'direktori_staf_sort' => $_GET['direktori_staf_sort'] ?? '',
+                'direktori_staf_order' => $_GET['direktori_staf_order'] ?? '',
+                'direktori_staf_page' => $_GET['direktori_staf_page'] ?? ''
+            ]));
+        } elseif (isset($_SERVER['HTTP_REFERER'])) {
+            $refQuery = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_QUERY);
+            if ($refQuery) $redirectParams = '?' . $refQuery;
+        }
+        $redirectUrl = 'dashboard_perjawatan.php' . $redirectParams . '#direktoriStafContainer';
+        echo "<script>alert('Berjaya ditambah!'); window.location='$redirectUrl';</script>";
     } catch (PDOException $e) {
         $db->rollBack();
         echo "<script>alert('Gagal tambah.'); window.history.back();</script>";
@@ -56,7 +92,21 @@ if (isset($_POST['update'])) {
     // User biasa boleh edit profil sendiri sahaja (field terhad)
     // Admin/Super Admin boleh edit sesiapa (full access)
     if (!$has_edit_user_permission && !$is_own_profile) {
-        echo "<script>alert('⛔ Anda Tidak Dibenarkan Akses Halaman Ini.\n\nAnda hanya boleh edit profil sendiri.'); window.location='dashboard_perjawatan.php#direktoriStafContainer';</script>"; exit();
+        $redirectParams = '';
+        if (isset($_GET['direktori_staf_search']) || isset($_GET['direktori_staf_status'])) {
+            $redirectParams = '?' . http_build_query(array_filter([
+                'direktori_staf_search' => $_GET['direktori_staf_search'] ?? '',
+                'direktori_staf_status' => $_GET['direktori_staf_status'] ?? '',
+                'direktori_staf_sort' => $_GET['direktori_staf_sort'] ?? '',
+                'direktori_staf_order' => $_GET['direktori_staf_order'] ?? '',
+                'direktori_staf_page' => $_GET['direktori_staf_page'] ?? ''
+            ]));
+        } elseif (isset($_SERVER['HTTP_REFERER'])) {
+            $refQuery = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_QUERY);
+            if ($refQuery) $redirectParams = '?' . $refQuery;
+        }
+        $redirectUrl = 'dashboard_perjawatan.php' . $redirectParams . '#direktoriStafContainer';
+        echo "<script>alert('⛔ Anda Tidak Dibenarkan Akses Halaman Ini.\n\nAnda hanya boleh edit profil sendiri.'); window.location='$redirectUrl';</script>"; exit();
     }
 
     try {
@@ -71,14 +121,22 @@ if (isset($_POST['update'])) {
             }
         }
 
+        // Convert all text fields to uppercase
+        $emel = mb_strtolower(trim($_POST['emel'] ?? ''), 'UTF-8'); // Email tetap lowercase
+        $telefon = mb_strtoupper(trim($_POST['telefon'] ?? ''), 'UTF-8');
+        
         if (!$has_edit_user_permission) {
             // User biasa - edit field terhad sahaja (emel, telefon, gred, bahagian)
             $sql = "UPDATE users SET emel=?, telefon=?, id_gred=?, id_bahagian=? $sql_gambar WHERE id_user=?";
-            $params = [$_POST['emel'], $_POST['telefon'], $_POST['id_gred'], $_POST['id_bahagian']];
+            $params = [$emel, $telefon, $_POST['id_gred'], $_POST['id_bahagian']];
         } else {
             // Admin - edit semua field termasuk status
+            $no_staf = mb_strtoupper(trim($_POST['no_staf'] ?? ''), 'UTF-8');
+            $no_kp = mb_strtoupper(trim($_POST['no_kp'] ?? ''), 'UTF-8');
+            $nama = mb_strtoupper(trim($_POST['nama'] ?? ''), 'UTF-8');
+            
             $sql = "UPDATE users SET no_staf=?, no_kp=?, nama=?, emel=?, telefon=?, id_jawatan=?, id_gred=?, id_bahagian=?, id_status_staf=? $sql_gambar WHERE id_user=?";
-            $params = [$_POST['no_staf'], $_POST['no_kp'], strtoupper($_POST['nama']), $_POST['emel'], $_POST['telefon'], $_POST['id_jawatan'], $_POST['id_gred'], $_POST['id_bahagian'], $_POST['id_status_staf']];
+            $params = [$no_staf, $no_kp, $nama, $emel, $telefon, $_POST['id_jawatan'], $_POST['id_gred'], $_POST['id_bahagian'], $_POST['id_status_staf']];
         }
 
         if (!empty($sql_gambar)) {
@@ -93,7 +151,22 @@ if (isset($_POST['update'])) {
             $_SESSION['gambar'] = $nama_gambar;
         }
 
-        echo "<script>alert('Maklumat dikemaskini!'); window.location='dashboard_perjawatan.php#direktoriStafContainer';</script>";
+        // Preserve query parameters from GET or referrer
+        $redirectParams = '';
+        if (isset($_GET['direktori_staf_search']) || isset($_GET['direktori_staf_status']) || isset($_GET['direktori_staf_sort']) || isset($_GET['direktori_staf_page'])) {
+            $redirectParams = '?' . http_build_query(array_filter([
+                'direktori_staf_search' => $_GET['direktori_staf_search'] ?? '',
+                'direktori_staf_status' => $_GET['direktori_staf_status'] ?? '',
+                'direktori_staf_sort' => $_GET['direktori_staf_sort'] ?? '',
+                'direktori_staf_order' => $_GET['direktori_staf_order'] ?? '',
+                'direktori_staf_page' => $_GET['direktori_staf_page'] ?? ''
+            ]));
+        } elseif (isset($_SERVER['HTTP_REFERER'])) {
+            $refQuery = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_QUERY);
+            if ($refQuery) $redirectParams = '?' . $refQuery;
+        }
+        $redirectUrl = 'dashboard_perjawatan.php' . $redirectParams . '#direktoriStafContainer';
+        echo "<script>alert('Maklumat dikemaskini!'); window.location='$redirectUrl';</script>";
     } catch (Exception $e) {
         $error_msg = 'Gagal kemaskini: ' . $e->getMessage();
         echo "<script>alert('".addslashes($error_msg)."'); window.history.back();</script>";
@@ -106,6 +179,7 @@ if (isset($_POST['send_wish'])) {
     verifyCsrfToken(); // CSRF Protection
     
     $id_target = $_POST['id_user_wish']; // Ambil ID dari form
+    $from_embed = isset($_POST['from_embed']) && $_POST['from_embed'] == '1'; // Check if from embed mode
 
     // Cari staf guna ID (Lebih Tepat)
     $stmt = $db->prepare("SELECT nama, emel, no_kp FROM users WHERE id_user = ?");
@@ -131,13 +205,60 @@ if (isset($_POST['send_wish'])) {
         $mesej .= "<p style='font-size: 12px; color: #777;'>Ikhlas daripada,<br>Pengurus Besar, Pengurusan, dan Warga Kerja<br>Lembaga Kemajunan Wilayah Kedah (KEDA)</p>";
         $mesej .= "</div>";
 
-        if (hantarEmel($target['emel'], $subjek, $mesej)) {
-            echo "<script>alert('Ucapan berjaya dihantar ke emel staf!'); window.location='kalendar.php';</script>";
+        // Determine redirect URL based on embed mode
+        if ($from_embed) {
+            // If from embed mode, redirect back to dashboard with calendar section shown
+            $redirectUrl = 'dashboard_perjawatan.php#birthdaySection';
         } else {
-            echo "<script>alert('Gagal menghantar emel. Sila cuba lagi.'); window.location='kalendar.php';</script>";
+            // If not from embed, redirect to kalendar.php (standalone page)
+            $redirectUrl = 'kalendar.php';
+        }
+
+        if (hantarEmel($target['emel'], $subjek, $mesej)) {
+            // For embed mode, use parent window redirect
+            if ($from_embed) {
+                echo "<script>
+                    alert('Ucapan berjaya dihantar ke emel staf!');
+                    if (window.parent && window.parent !== window) {
+                        // We're in an iframe, redirect parent window
+                        window.parent.location.replace('dashboard_perjawatan.php#birthdaySection');
+                    } else {
+                        // Not in iframe, redirect current window
+                        window.location.replace('dashboard_perjawatan.php#birthdaySection');
+                    }
+                </script>";
+            } else {
+                echo "<script>alert('Ucapan berjaya dihantar ke emel staf!'); window.location.replace('$redirectUrl');</script>";
+            }
+        } else {
+            // For embed mode, use parent window redirect
+            if ($from_embed) {
+                echo "<script>
+                    alert('Gagal menghantar emel. Sila cuba lagi.');
+                    if (window.parent && window.parent !== window) {
+                        window.parent.location.replace('dashboard_perjawatan.php#birthdaySection');
+                    } else {
+                        window.location.replace('dashboard_perjawatan.php#birthdaySection');
+                    }
+                </script>";
+            } else {
+                echo "<script>alert('Gagal menghantar emel. Sila cuba lagi.'); window.location.replace('$redirectUrl');</script>";
+            }
         }
     } else {
-        echo "<script>alert('Ralat: Staf tiada emel atau data tidak dijumpai.'); window.location='kalendar.php';</script>";
+        // For embed mode, use parent window redirect
+        if ($from_embed) {
+            echo "<script>
+                alert('Ralat: Staf tiada emel atau data tidak dijumpai.');
+                if (window.parent && window.parent !== window) {
+                    window.parent.location.replace('dashboard_perjawatan.php#birthdaySection');
+                } else {
+                    window.location.replace('dashboard_perjawatan.php#birthdaySection');
+                }
+            </script>";
+        } else {
+            echo "<script>alert('Ralat: Staf tiada emel atau data tidak dijumpai.'); window.location.replace('kalendar.php');</script>";
+        }
     }
     exit(); // PENTING: Berhenti di sini supaya tak paparkan form bawah
 }
@@ -283,7 +404,20 @@ $disabledJawatan = ($currentUserRole == 'user') ? 'disabled' : '';
                         </div>
 
                         <div class="d-flex justify-content-end gap-2">
-                            <a href="dashboard_perjawatan.php#direktoriStafContainer" class="btn btn-light border">Batal</a>
+                            <?php
+                            // Preserve query parameters for cancel button
+                            $cancelParams = '';
+                            if (isset($_GET['direktori_staf_search']) || isset($_GET['direktori_staf_status']) || isset($_GET['direktori_staf_sort']) || isset($_GET['direktori_staf_page'])) {
+                                $cancelParams = '?' . http_build_query(array_filter([
+                                    'direktori_staf_search' => $_GET['direktori_staf_search'] ?? '',
+                                    'direktori_staf_status' => $_GET['direktori_staf_status'] ?? '',
+                                    'direktori_staf_sort' => $_GET['direktori_staf_sort'] ?? '',
+                                    'direktori_staf_order' => $_GET['direktori_staf_order'] ?? '',
+                                    'direktori_staf_page' => $_GET['direktori_staf_page'] ?? ''
+                                ]));
+                            }
+                            ?>
+                            <a href="dashboard_perjawatan.php<?php echo $cancelParams; ?>#direktoriStafContainer" class="btn btn-light border">Batal</a>
                             <button type="submit" name="<?php echo $btnName; ?>" class="btn btn-primary px-4">Simpan</button>
                         </div>
                     </form>

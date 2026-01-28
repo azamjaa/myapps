@@ -87,6 +87,9 @@ if (isset($_GET['export'])) {
 
 include 'header.php';
 
+// Get kategori list for modal
+$kategoriList = $db->query("SELECT id_kategori, nama_kategori FROM kategori WHERE aktif = 1 ORDER BY nama_kategori")->fetchAll(PDO::FETCH_ASSOC);
+
 // Statistik Aplikasi
 $cntAplikasi = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1")->fetchColumn();
 $cntDalaman = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 1")->fetchColumn();
@@ -1032,7 +1035,7 @@ if (!$lastUpdated) {
                         <!-- Search Card -->
                         <div class="card shadow-sm mb-4 border-0" style="background-color: #f8f9fa;">
                             <div class="card-body">
-                                <form method="get" class="mb-0" id="direktoriSearchForm">
+                                <form method="get" class="mb-0" id="direktoriSearchForm" action="#direktoriAplikasiContainer">
                                     <input type="hidden" name="direktori_kategori" value="<?php echo htmlspecialchars($direktori_kategori); ?>">
                                     <input type="hidden" name="direktori_sort" value="<?php echo htmlspecialchars($direktori_sort); ?>">
                                     <input type="hidden" name="direktori_order" value="<?php echo htmlspecialchars($direktori_order); ?>">
@@ -1054,7 +1057,16 @@ if (!$lastUpdated) {
                                             $is_admin = $checkAdmin->fetch()['cnt'] > 0;
                                             ?>
                                             <?php if($is_admin): ?>
-                                                <a href="proses_aplikasi.php" class="btn btn-primary"><i class="fas fa-plus"></i> Tambah Aplikasi</a>
+                                                <?php
+                                                $tambahParams = http_build_query([
+                                                    'direktori_search' => $direktori_search,
+                                                    'direktori_kategori' => $direktori_kategori,
+                                                    'direktori_sort' => $direktori_sort,
+                                                    'direktori_order' => $direktori_order,
+                                                    'direktori_page' => $direktori_page
+                                                ]);
+                                                ?>
+                                                <button type="button" class="btn btn-primary" onclick="openAplikasiAddModal()"><i class="fas fa-plus"></i> Tambah Aplikasi</button>
                                             <?php endif; ?>
                                             <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'export_data')): ?>
                                                 <a href="dashboard_aplikasi.php?export=1<?php echo ($direktori_kategori !== '') ? '&direktori_kategori=' . urlencode($direktori_kategori) : ''; ?>" class="btn btn-success" target="_blank"><i class="fas fa-file-excel"></i> Export Excel</a>
@@ -1113,7 +1125,7 @@ if (!$lastUpdated) {
                                             </td>
                                             <td class="text-center px-3">
                                                 <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_application')): ?>
-                                                    <a href="proses_aplikasi.php?id=<?php echo $row['id_aplikasi']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
+                                                    <button type="button" class="btn btn-sm btn-warning" onclick="openAplikasiEditModal(<?php echo $row['id_aplikasi']; ?>, '<?php echo htmlspecialchars(addslashes($row['nama_aplikasi'])); ?>', <?php echo $row['id_kategori']; ?>, '<?php echo htmlspecialchars(addslashes($row['keterangan'] ?? '')); ?>', '<?php echo htmlspecialchars(addslashes($row['url'] ?? '')); ?>', <?php echo $row['sso_comply'] ?? 0; ?>, <?php echo $row['status'] ?? 1; ?>)" title="Edit"><i class="fas fa-edit"></i></button>
                                                 <?php endif; ?>
                                                 <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'delete_application')): ?>
                                                     <a href="javascript:void(0);" class="btn btn-sm btn-danger" title="Padam" onclick="confirmDeleteAplikasi(<?php echo $row['id_aplikasi']; ?>, '<?php echo htmlspecialchars(addslashes($row['nama_aplikasi'])); ?>')">
@@ -1210,7 +1222,7 @@ if (!$lastUpdated) {
                                             </td>
                                             <td class="text-center px-3">
                                                 <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_application')): ?>
-                                                    <a href="proses_aplikasi.php?id=<?php echo $row['id_aplikasi']; ?>" class="btn btn-sm btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
+                                                    <button type="button" class="btn btn-sm btn-warning" onclick="openAplikasiEditModal(<?php echo $row['id_aplikasi']; ?>, '<?php echo htmlspecialchars(addslashes($row['nama_aplikasi'])); ?>', <?php echo $row['id_kategori']; ?>, '<?php echo htmlspecialchars(addslashes($row['keterangan'] ?? '')); ?>', '<?php echo htmlspecialchars(addslashes($row['url'] ?? '')); ?>', <?php echo $row['sso_comply'] ?? 0; ?>, <?php echo $row['status'] ?? 1; ?>)" title="Edit"><i class="fas fa-edit"></i></button>
                                                 <?php endif; ?>
                                                 <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'delete_application')): ?>
                                                     <a href="javascript:void(0);" class="btn btn-sm btn-danger" title="Padam" onclick="confirmDeleteAplikasi(<?php echo $row['id_aplikasi']; ?>, '<?php echo htmlspecialchars(addslashes($row['nama_aplikasi'])); ?>')">
@@ -1373,13 +1385,294 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Ensure list view stays visible after form submission
+const direktoriSearchForm = document.getElementById('direktoriSearchForm');
+if (direktoriSearchForm) {
+    direktoriSearchForm.addEventListener('submit', function() {
+        // Ensure list view is shown after search
+        setTimeout(() => {
+            if (direktoriContainer) {
+                direktoriContainer.style.display = 'block';
+                document.body.classList.add('show-direktori');
+                const senaraiCard = document.querySelector('.summary-card[data-bs-target="#semua"]');
+                if (senaraiCard) senaraiCard.classList.add('active');
+            }
+        }, 100);
+    });
+}
+
 // Function to confirm delete aplikasi
 function confirmDeleteAplikasi(id, name) {
     if (confirm("Anda pasti mahu padam aplikasi \"" + name + "\"?\n\nTindakan ini tidak boleh dibatalkan.")) {
-        // Redirect to proses_aplikasi.php with delete action
-        window.location.href = "proses_aplikasi.php?action=delete&id=" + id + "&redirect=" + encodeURIComponent(window.location.href);
+        // Redirect to proses_aplikasi.php with delete action, preserve current query params
+        const currentUrl = window.location.href;
+        window.location.href = "proses_aplikasi.php?action=delete&id=" + id + "&redirect=" + encodeURIComponent(currentUrl);
     }
 }
+</script>
+
+<!-- Modal Add/Edit Aplikasi -->
+<div class="modal fade" id="aplikasiAddEditModal" tabindex="-1" aria-labelledby="aplikasiAddEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="aplikasiAddEditModalLabel">
+                    <i class="fas fa-plus me-2"></i><span id="aplikasiModalTitle">Tambah Aplikasi Baharu</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="aplikasiAddEditForm" method="POST">
+                    <?php echo getCsrfTokenField(); ?>
+                    <input type="hidden" name="id_aplikasi" id="aplikasiFormId">
+                    <input type="hidden" name="mode" id="aplikasiFormMode" value="add">
+                    
+                    <!-- Nama Aplikasi -->
+                    <div class="mb-3">
+                        <label for="aplikasiFormNama" class="form-label fw-bold">Nama Aplikasi <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="aplikasiFormNama" name="nama_aplikasi" required placeholder="Cth: MyPPRS KEDA">
+                    </div>
+
+                    <!-- Kategori & Warna -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="aplikasiFormKategori" class="form-label fw-bold">Kategori <span class="text-danger">*</span></label>
+                            <select class="form-select" id="aplikasiFormKategori" name="id_kategori" required>
+                                <option value="">-- Pilih Kategori --</option>
+                                <?php foreach ($kategoriList as $kat): ?>
+                                    <option value="<?php echo $kat['id_kategori']; ?>" data-warna="<?php 
+                                        $warna = [1 => '#F39C12', 2 => '#E74C3C', 3 => '#6C3483'];
+                                        echo $warna[$kat['id_kategori']] ?? '#007bff';
+                                    ?>"><?php echo htmlspecialchars($kat['nama_kategori']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="aplikasiFormWarna" class="form-label fw-bold">Warna Badge <span class="text-muted small">(Auto)</span></label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="aplikasiFormWarna" value="#007bff" disabled>
+                                <span class="input-group-text">
+                                    <div id="aplikasiFormWarnaPreview" style="width: 24px; height: 24px; background-color: #007bff; border-radius: 3px;"></div>
+                                </span>
+                            </div>
+                            <small class="text-muted d-block mt-1">Warna akan diatur otomatis berdasarkan kategori</small>
+                        </div>
+                    </div>
+
+                    <!-- Keterangan -->
+                    <div class="mb-3">
+                        <label for="aplikasiFormKeterangan" class="form-label fw-bold">Keterangan</label>
+                        <textarea class="form-control" id="aplikasiFormKeterangan" name="keterangan" rows="3" placeholder="Deskripsi aplikasi..."></textarea>
+                    </div>
+
+                    <!-- URL -->
+                    <div class="mb-3">
+                        <label for="aplikasiFormUrl" class="form-label fw-bold">URL/Link Aplikasi</label>
+                        <input type="url" class="form-control" id="aplikasiFormUrl" name="url" placeholder="https://...">
+                    </div>
+
+                    <!-- SSO Compliant -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="aplikasiFormSso" name="sso_comply">
+                            <label class="form-check-label" for="aplikasiFormSso">
+                                <strong>SSO Compliant</strong> - Aplikasi ini menyokong Single Sign-On
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Status (hanya untuk edit) -->
+                    <div class="mb-3" id="aplikasiFormStatusContainer" style="display: none;">
+                        <label for="aplikasiFormStatus" class="form-label fw-bold">Status</label>
+                        <select class="form-select" id="aplikasiFormStatus" name="status">
+                            <option value="1">Aktif</option>
+                            <option value="0">Tidak Aktif</option>
+                        </select>
+                        <small class="text-muted d-block mt-1">Aplikasi dengan status "Tidak Aktif" tidak akan muncul di Direktori Aplikasi</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="aplikasiFormSubmitBtn">
+                    <i class="fas fa-save me-2"></i>Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Kategori warna mapping
+const kategoriWarna = {
+    1: '#F39C12',  // Dalaman (Orange)
+    2: '#E74C3C',  // Luaran (Red)
+    3: '#6C3483'   // Gunasama (Purple)
+};
+
+// Function untuk buka modal Add Aplikasi
+function openAplikasiAddModal() {
+    // Reset form
+    document.getElementById('aplikasiAddEditForm').reset();
+    document.getElementById('aplikasiFormId').value = '';
+    document.getElementById('aplikasiFormMode').value = 'add';
+    document.getElementById('aplikasiModalTitle').textContent = 'Tambah Aplikasi Baharu';
+    document.getElementById('aplikasiFormStatusContainer').style.display = 'none';
+    document.getElementById('aplikasiFormWarna').value = '#007bff';
+    document.getElementById('aplikasiFormWarnaPreview').style.backgroundColor = '#007bff';
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('aplikasiAddEditModal'));
+    modal.show();
+}
+
+// Function untuk buka modal Edit Aplikasi
+function openAplikasiEditModal(id, nama, kategori, keterangan, url, sso, status) {
+    if (!id) {
+        alert('ID Aplikasi tidak sah!');
+        return;
+    }
+    
+    // Populate form
+    document.getElementById('aplikasiFormId').value = id;
+    document.getElementById('aplikasiFormMode').value = 'edit';
+    document.getElementById('aplikasiModalTitle').textContent = 'Edit Aplikasi';
+    document.getElementById('aplikasiFormNama').value = nama || '';
+    document.getElementById('aplikasiFormKategori').value = kategori || '';
+    document.getElementById('aplikasiFormKeterangan').value = keterangan || '';
+    document.getElementById('aplikasiFormUrl').value = url || '';
+    document.getElementById('aplikasiFormSso').checked = (sso == 1);
+    document.getElementById('aplikasiFormStatus').value = status || 1;
+    document.getElementById('aplikasiFormStatusContainer').style.display = 'block';
+    
+    // Update warna berdasarkan kategori
+    const warna = kategoriWarna[kategori] || '#007bff';
+    document.getElementById('aplikasiFormWarna').value = warna;
+    document.getElementById('aplikasiFormWarnaPreview').style.backgroundColor = warna;
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('aplikasiAddEditModal'));
+    modal.show();
+}
+
+// Update warna ketika kategori berubah
+document.addEventListener('DOMContentLoaded', function() {
+    const kategoriSelect = document.getElementById('aplikasiFormKategori');
+    if (kategoriSelect) {
+        kategoriSelect.addEventListener('change', function() {
+            const selectedKategori = this.value;
+            const selectedOption = this.options[this.selectedIndex];
+            const warna = selectedOption.getAttribute('data-warna') || kategoriWarna[selectedKategori] || '#007bff';
+            
+            document.getElementById('aplikasiFormWarna').value = warna;
+            document.getElementById('aplikasiFormWarnaPreview').style.backgroundColor = warna;
+        });
+    }
+    
+    // Handle form submission
+    const aplikasiForm = document.getElementById('aplikasiAddEditForm');
+    const submitBtn = document.getElementById('aplikasiFormSubmitBtn');
+    
+    if (submitBtn && aplikasiForm) {
+        submitBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Validate form
+            if (!aplikasiForm.checkValidity()) {
+                aplikasiForm.reportValidity();
+                return;
+            }
+            
+            // Disable button
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...';
+            
+            // Create FormData
+            const formData = new FormData(aplikasiForm);
+            const mode = document.getElementById('aplikasiFormMode').value;
+            
+            if (mode === 'add') {
+                // Add mode - no id needed
+            } else {
+                formData.append('id_aplikasi', document.getElementById('aplikasiFormId').value);
+            }
+            
+            // Submit via AJAX
+            fetch('proses_aplikasi.php' + (mode === 'edit' ? '?id=' + document.getElementById('aplikasiFormId').value : ''), {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(data => {
+                // Extract message from alert script if present
+                const successMatch = data.match(/alert\(['"]([^'"]+)['"]\)/);
+                const message = successMatch ? successMatch[1] : '';
+                
+                // Check if response contains success message
+                if (data.includes('Berjaya') || data.includes('berjaya') || message.includes('Berjaya')) {
+                    // Close modal first
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('aplikasiAddEditModal'));
+                    if (modal) modal.hide();
+                    
+                    // Show success message
+                    if (message) {
+                        alert(message);
+                    }
+                    
+                    // Reload page to show updated data
+                    setTimeout(() => {
+                        const currentHash = window.location.hash;
+                        const currentParams = window.location.search;
+                        window.location.href = 'dashboard_aplikasi.php' + currentParams + currentHash;
+                    }, 500);
+                } else if (data.includes('Gagal') || data.includes('gagal') || message.includes('Gagal')) {
+                    alert(message || 'Gagal menyimpan data! Sila cuba lagi.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Simpan';
+                } else {
+                    // Try to parse as JSON if possible
+                    try {
+                        const jsonData = JSON.parse(data);
+                        if (jsonData.success) {
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('aplikasiAddEditModal'));
+                            if (modal) modal.hide();
+                            setTimeout(() => {
+                                const currentHash = window.location.hash;
+                                const currentParams = window.location.search;
+                                window.location.href = 'dashboard_aplikasi.php' + currentParams + currentHash;
+                            }, 500);
+                        } else {
+                            alert(jsonData.message || 'Gagal menyimpan data!');
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Simpan';
+                        }
+                    } catch (e) {
+                        // Not JSON, might be HTML response
+                        if (!data.includes('error') && !data.includes('Gagal')) {
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('aplikasiAddEditModal'));
+                            if (modal) modal.hide();
+                            setTimeout(() => {
+                                const currentHash = window.location.hash;
+                                const currentParams = window.location.search;
+                                window.location.href = 'dashboard_aplikasi.php' + currentParams + currentHash;
+                            }, 500);
+                        } else {
+                            alert('Gagal menyimpan data! Sila cuba lagi.');
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Simpan';
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting form:', error);
+                alert('Ralat menghantar data! Sila cuba lagi.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Simpan';
+            });
+        });
+    }
+});
 </script>
 
 </body>

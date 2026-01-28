@@ -73,6 +73,9 @@ if ($current_user) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Modern Bootstrap Override - Premium Tailwind-Inspired Styles -->
+    <link href="modern-bootstrap.css?v=<?php echo time(); ?>" rel="stylesheet">
+    
     <!-- Tailwind CSS - Removed to avoid production warning -->
     <!-- If needed, install Tailwind CSS properly for production: https://tailwindcss.com/docs/installation -->
     <!--
@@ -104,8 +107,8 @@ if ($current_user) {
             overflow-x: hidden;
         }
         
-        /* Force CSS Reload */
-        body { background-color: #f3f4f6; overflow-x: hidden; }
+        /* Force CSS Reload - Updated to match modern-bootstrap.css */
+        body { background-color: #f8fafc !important; overflow-x: hidden; }
 
         /* SIDEBAR STYLES */
         .sidebar {
@@ -555,7 +558,7 @@ if ($current_user) {
     <div class="p-3 text-white d-flex align-items-center" style="background: linear-gradient(135deg, #dc3545, #c82333);">
         <img src="image/mawar.png" width="35" class="rounded-circle border border-2 me-2 bg-white">
         <div>
-            <h6 class="mb-0">Mawar</h6>
+            <h6 class="mb-0 text-white" style="color:#ffffff;">Mawar</h6>
             <small style="font-size: 11px;">● Pembantu Digital</small>
         </div>
         <button onclick="toggleChat()" class="btn-close btn-close-white ms-auto"></button>

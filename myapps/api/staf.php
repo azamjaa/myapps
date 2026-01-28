@@ -142,6 +142,12 @@ class StafAPI extends API {
         try {
             $data = $this->sanitize($this->getData());
             
+            // Convert text fields to uppercase
+            $data['nama'] = isset($data['nama']) ? mb_strtoupper(trim($data['nama']), 'UTF-8') : null;
+            $data['no_staf'] = isset($data['no_staf']) ? mb_strtoupper(trim($data['no_staf']), 'UTF-8') : null;
+            $data['emel'] = isset($data['emel']) ? mb_strtolower(trim($data['emel']), 'UTF-8') : null; // Email tetap lowercase
+            $data['telefon'] = isset($data['telefon']) ? mb_strtoupper(trim($data['telefon']), 'UTF-8') : null;
+            
             // Check for duplicate staff number
             $checkSql = "SELECT id_user FROM users WHERE no_staf = ?";
             $checkStmt = $this->db->prepare($checkSql);
@@ -192,6 +198,17 @@ class StafAPI extends API {
             
             if (!$checkStmt->fetch()) {
                 $this->sendResponse(404, false, 'Staff not found');
+            }
+            
+            // Convert text fields to uppercase
+            if (isset($data['nama'])) {
+                $data['nama'] = mb_strtoupper(trim($data['nama']), 'UTF-8');
+            }
+            if (isset($data['emel'])) {
+                $data['emel'] = mb_strtolower(trim($data['emel']), 'UTF-8'); // Email tetap lowercase
+            }
+            if (isset($data['telefon'])) {
+                $data['telefon'] = mb_strtoupper(trim($data['telefon']), 'UTF-8');
             }
             
             $sql = "UPDATE users SET 

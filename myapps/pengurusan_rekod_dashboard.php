@@ -532,6 +532,9 @@ if (isset($_GET['download']) && isset($_GET['category']) && isset($_GET['format'
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/src/rbac_helper.php';
+require_once __DIR__ . '/utils/reverse_geocode.php';
+require_once __DIR__ . '/utils/geocode.php';
+require_once __DIR__ . '/utils/text_helper.php';
 
 // Check if PhpSpreadsheet is available for Excel processing
 $phpspreadsheetAvailable = false;
@@ -700,18 +703,133 @@ if (isset($_POST['upload_spatial']) && isset($_FILES['spatial_file'])) {
                     try {
                         $db->beginTransaction();
                         
-                        // Prepare INSERT statement with ST_GeomFromGeoJSON
+                        // Map dashboard category name to database kategori format
+                        $categoryMapping = [
+                            'Desa KEDA' => 'keda - bangunan kediaman',
+                            'Bantuan Kolej KEDA' => 'keda - bantuan kolej keda',
+                            'Bantuan Komuniti' => 'keda - bantuan bahagian bpk',
+                            'Bantuan Pertanian' => 'keda - bantuan bahagian bnt',
+                            'Bantuan Usahawan' => 'keda - bantuan bahagian bpu',
+                            'Jalan Perhubungan Desa' => 'keda - jalan perhubungan desa',
+                            'Perniagaan & IKS' => 'keda - industri kecil sederhana',
+                            'Lot Telah Diserah Milik' => 'keda - lot telah diserahmilik',
+                            'Rekod Guna Tanah' => 'keda - gunatanah',
+                            'Sewaan Tanah KEDA' => 'keda - sewaan tanah-tanah keda'
+                        ];
+                        
+                        // Get database kategori from mapping and convert to uppercase
+                        $dbKategori = isset($categoryMapping[$selectedCategory]) ? $categoryMapping[$selectedCategory] : strtolower($selectedCategory);
+                        $dbKategori = mb_strtoupper(trim($dbKategori), 'UTF-8');
+                        
+                        // Check and add created_at/updated_at columns if they don't exist
+                        try {
+                            $checkCreatedAt = $db->query("SHOW COLUMNS FROM geojson_data LIKE 'created_at'");
+                            if ($checkCreatedAt->rowCount() == 0) {
+                                $db->exec("ALTER TABLE geojson_data ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP");
+                                error_log("Added created_at column to geojson_data table");
+                            }
+                        } catch (Exception $e) {
+                            error_log("Error checking/adding created_at column: " . $e->getMessage());
+                        }
+                        
+                        try {
+                            $checkUpdatedAt = $db->query("SHOW COLUMNS FROM geojson_data LIKE 'updated_at'");
+                            if ($checkUpdatedAt->rowCount() == 0) {
+                                $db->exec("ALTER TABLE geojson_data ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+                                error_log("Added updated_at column to geojson_data table");
+                            }
+                        } catch (Exception $e) {
+                            error_log("Error checking/adding updated_at column: " . $e->getMessage());
+                        }
+                        
+                        // Check if columns exist before using them in INSERT
+                        $hasCreatedAt = false;
+                        $hasUpdatedAt = false;
+                        try {
+                            $colsStmt = $db->query("SHOW COLUMNS FROM geojson_data");
+                            $columns = $colsStmt->fetchAll(PDO::FETCH_COLUMN);
+                            $hasCreatedAt = in_array('created_at', $columns);
+                            $hasUpdatedAt = in_array('updated_at', $columns);
+                        } catch (Exception $e) {
+                            error_log("Error checking columns: " . $e->getMessage());
+                        }
+                        
+                        // Helper function to convert GeoJSON to WKT (define in this scope)
+                        $geojsonToWKT = function($geometry) {
+                            if (!$geometry || !isset($geometry['type'])) {
+                                return null;
+                            }
+                            
+                            $type = strtoupper($geometry['type']);
+                            $coords = $geometry['coordinates'] ?? null;
+                            
+                            if (!$coords) {
+                                return null;
+                            }
+                            
+                            switch ($type) {
+                                case 'POINT':
+                                    if (count($coords) >= 2) {
+                                        return "POINT({$coords[0]} {$coords[1]})";
+                                    }
+                                    break;
+                                    
+                                case 'POLYGON':
+                                    $rings = [];
+                                    foreach ($coords as $ring) {
+                                        $points = [];
+                                        foreach ($ring as $coord) {
+                                            if (count($coord) >= 2) {
+                                                $points[] = "{$coord[0]} {$coord[1]}";
+                                            }
+                                        }
+                                        if (!empty($points)) {
+                                            $rings[] = "(" . implode(', ', $points) . ")";
+                                        }
+                                    }
+                                    if (!empty($rings)) {
+                                        return "POLYGON(" . implode(', ', $rings) . ")";
+                                    }
+                                    break;
+                                    
+                                case 'LINESTRING':
+                                    $points = [];
+                                    foreach ($coords as $coord) {
+                                        if (count($coord) >= 2) {
+                                            $points[] = "{$coord[0]} {$coord[1]}";
+                                        }
+                                    }
+                                    if (!empty($points)) {
+                                        return "LINESTRING(" . implode(', ', $points) . ")";
+                                    }
+                                    break;
+                            }
+                            
+                            return null;
+                        };
+                        
+                        // Check if ST_GeomFromGeoJSON is available (MySQL 5.7.5+)
+                        // Test with a simple query first
+                        $testGeomFunc = false;
+                        try {
+                            $testStmt = $db->query("SELECT ST_GeomFromGeoJSON('{\"type\":\"Point\",\"coordinates\":[100,5]}') as test");
+                            if ($testStmt) {
+                                $testGeomFunc = true;
+                            }
+                        } catch (Exception $e) {
+                            error_log("ST_GeomFromGeoJSON not available, using alternative method: " . $e->getMessage());
+                        }
+                        
+                        // Prepare INSERT statement for geojson_data table
+                        // Note: geometry column in geojson_data is JSON type, not GEOMETRY type
+                        // So we store geometry as JSON string directly, not using ST_GeomFromGeoJSON
                         $insertStmt = $db->prepare("
-                            INSERT INTO geo_boundaries (boundary_name, boundary_geom, category, properties, created_at, updated_at) 
-                            VALUES (?, ST_GeomFromGeoJSON(?), ?, ?, NOW(), NOW())
+                            INSERT INTO geojson_data (kategori, properties, geometry) 
+                            VALUES (?, ?, ?)
                         ");
                         
-                        // Check for duplicates before inserting (smart duplicate detection)
-                        $checkDuplicateStmt = $db->prepare("
-                            SELECT id FROM geo_boundaries 
-                            WHERE boundary_name = ? AND category = ?
-                            LIMIT 1
-                        ");
+                        // Check for duplicates before inserting (check multiple name fields)
+                        // We'll check in the loop using a more flexible approach
                         
                         $importedCount = 0;
                         $skippedCount = 0; // Count skipped duplicates
@@ -725,26 +843,59 @@ if (isset($_POST['upload_spatial']) && isset($_FILES['spatial_file'])) {
                                 continue;
                             }
                             
-                            // Get name from properties
-                            $boundaryName = 'Boundary ' . ($index + 1);
+                            // Get properties
                             $propertiesJson = null;
+                            $recordName = 'Record ' . ($index + 1);
                             if (isset($feature['properties'])) {
                                 $props = $feature['properties'];
-                                $boundaryName = $props['name'] ?? 
-                                               $props['NAME'] ?? 
-                                               $props['NAME_2'] ?? 
-                                               $props['adm2_name'] ?? 
-                                               $boundaryName;
-                                // Store all properties as JSON
+                                // Convert all text properties to uppercase
+                                $props = convertToUppercase($props);
+                                
+                                $recordName = $props['name'] ?? 
+                                             $props['NAME'] ?? 
+                                             $props['NAMA'] ?? 
+                                             $props['NAME_2'] ?? 
+                                             $props['ADM2_NAME'] ?? 
+                                             $recordName;
+                                // Store all properties as JSON (already converted to uppercase)
                                 $propertiesJson = json_encode($props, JSON_UNESCAPED_UNICODE);
+                            } else {
+                                $propertiesJson = json_encode([], JSON_UNESCAPED_UNICODE);
                             }
                             
                             // Convert geometry to GeoJSON string for ST_GeomFromGeoJSON
                             $geomJson = json_encode($feature['geometry'], JSON_UNESCAPED_UNICODE);
+                            $geomForInsert = $geomJson;
                             
                             try {
+                                // Validate geometry before inserting
+                                if (empty($geomJson) || $geomJson === 'null' || $geomJson === '[]') {
+                                    $errorCount++;
+                                    $errors[] = "Feature #" . ($index + 1) . " ($recordName): Geometry kosong atau tidak sah";
+                                    continue;
+                                }
+                                
+                                // Validate properties JSON
+                                if (empty($propertiesJson) || $propertiesJson === 'null') {
+                                    $errorCount++;
+                                    $errors[] = "Feature #" . ($index + 1) . " ($recordName): Properties kosong atau tidak sah";
+                                    continue;
+                                }
+                                
                                 // Smart duplicate detection: Check if record already exists
-                                $checkDuplicateStmt->execute([$boundaryName, $selectedCategory]);
+                                // Check by name in properties (try multiple possible name fields)
+                                $checkDuplicateStmt = $db->prepare("
+                                    SELECT id FROM geojson_data 
+                                    WHERE kategori = ? 
+                                    AND (
+                                        properties->>'$.name' = ? OR
+                                        properties->>'$.NAME' = ? OR
+                                        properties->>'$.NAMA' = ? OR
+                                        JSON_EXTRACT(properties, '$.name') = JSON_QUOTE(?)
+                                    )
+                                    LIMIT 1
+                                ");
+                                $checkDuplicateStmt->execute([$dbKategori, $recordName, $recordName, $recordName, $recordName]);
                                 if ($checkDuplicateStmt->fetch()) {
                                     // Duplicate found - skip this record to avoid duplication
                                     $skippedCount++;
@@ -752,15 +903,30 @@ if (isset($_POST['upload_spatial']) && isset($_FILES['spatial_file'])) {
                                 }
                                 
                                 // No duplicate - safe to insert
-                                if ($insertStmt->execute([$boundaryName, $geomJson, $selectedCategory, $propertiesJson])) {
+                                // Parameters: kategori, properties, geometry (timestamps handled by MySQL DEFAULT)
+                                if ($insertStmt->execute([$dbKategori, $propertiesJson, $geomForInsert])) {
                                     $importedCount++;
                                 } else {
+                                    $errorInfo = $insertStmt->errorInfo();
                                     $errorCount++;
-                                    $errors[] = "Feature #" . ($index + 1) . ": Gagal insert - " . implode(', ', $insertStmt->errorInfo());
+                                    $errorMsg = "Feature #" . ($index + 1) . " ($recordName): Gagal insert";
+                                    if (isset($errorInfo[2])) {
+                                        $errorMsg .= " - " . $errorInfo[2];
+                                    }
+                                    if (isset($errorInfo[1])) {
+                                        $errorMsg .= " [SQL Error Code: " . $errorInfo[1] . "]";
+                                    }
+                                    $errors[] = $errorMsg;
+                                    error_log("GeoJSON Insert Error for Feature #" . ($index + 1) . ": " . print_r($errorInfo, true));
                                 }
+                            } catch (PDOException $e) {
+                                $errorCount++;
+                                $errors[] = "Feature #" . ($index + 1) . " ($recordName): Database error - " . $e->getMessage();
+                                error_log("GeoJSON Insert PDOException for Feature #" . ($index + 1) . ": " . $e->getMessage());
                             } catch (Exception $e) {
                                 $errorCount++;
-                                $errors[] = "Feature #" . ($index + 1) . ": " . $e->getMessage();
+                                $errors[] = "Feature #" . ($index + 1) . " ($recordName): " . $e->getMessage();
+                                error_log("GeoJSON Insert Exception for Feature #" . ($index + 1) . ": " . $e->getMessage());
                             }
                         }
                         
@@ -774,8 +940,20 @@ if (isset($_POST['upload_spatial']) && isset($_FILES['spatial_file'])) {
                         $uploadMessage .= ")";
                         if ($errorCount > 0) {
                             $uploadMessage .= " ($errorCount rekod gagal)";
-                            if (count($errors) <= 10) {
-                                $uploadMessage .= "<br><small class='text-danger'>Errors: " . implode(", ", array_slice($errors, 0, 10)) . "</small>";
+                            // Show more errors (up to 20) and indicate if there are more
+                            $errorLimit = 20;
+                            $errorMessages = array_slice($errors, 0, $errorLimit);
+                            $uploadMessage .= "<br><div class='mt-2'><small class='text-danger'><strong>Butiran Ralat:</strong><br>";
+                            $uploadMessage .= implode("<br>", array_map('htmlspecialchars', $errorMessages));
+                            if (count($errors) > $errorLimit) {
+                                $uploadMessage .= "<br>... dan " . (count($errors) - $errorLimit) . " lagi ralat (semak error log untuk butiran lengkap)";
+                            }
+                            $uploadMessage .= "</small></div>";
+                            
+                            // Log all errors to error log for debugging
+                            error_log("GeoJSON Upload Errors for file '$filename' (Category: $selectedCategory):");
+                            foreach ($errors as $idx => $error) {
+                                error_log("  Error #" . ($idx + 1) . ": $error");
                             }
                         }
                         
@@ -865,6 +1043,9 @@ if (isset($_POST['upload_spatial']) && isset($_FILES['spatial_file'])) {
                             continue;
                         }
                         
+                        // Convert name to uppercase
+                        $nameValue = mb_strtoupper(trim($nameValue), 'UTF-8');
+                        
                         try {
                             // Validate WKT format (basic check)
                             if (stripos($wktValue, 'POINT') === false && 
@@ -878,14 +1059,21 @@ if (isset($_POST['upload_spatial']) && isset($_FILES['spatial_file'])) {
                                 continue;
                             }
                             
-                            // Collect all properties from other columns
+                            // Collect all properties from other columns and convert to uppercase
                             $properties = [];
                             foreach ($allColumns as $col => $headerName) {
                                 $cellValue = trim($worksheet->getCell($col . $row)->getValue());
                                 if ($cellValue !== '') {
-                                    $properties[$headerName] = $cellValue;
+                                    // Convert text values to uppercase
+                                    if (is_string($cellValue)) {
+                                        $properties[$headerName] = mb_strtoupper(trim($cellValue), 'UTF-8');
+                                    } else {
+                                        $properties[$headerName] = $cellValue;
+                                    }
                                 }
                             }
+                            // Convert all properties to uppercase (recursive)
+                            $properties = convertToUppercase($properties);
                             $propertiesJson = !empty($properties) ? json_encode($properties, JSON_UNESCAPED_UNICODE) : null;
                             
                             // Smart duplicate detection: Check if record already exists
@@ -945,6 +1133,426 @@ if (isset($_POST['upload_spatial']) && isset($_FILES['spatial_file'])) {
 
 // Download handler has been moved to the top of the file (before includes)
 
+// Kedah approximate bounds for quick validation
+$kedahBounds = [
+    'minLat' => 5.0,
+    'maxLat' => 6.5,
+    'minLng' => 99.5,
+    'maxLng' => 101.0
+];
+
+/**
+ * Check if point is within Kedah state boundary polygon (accurate check)
+ */
+function isWithinKedahBoundary($lng, $lat, $db) {
+    try {
+        // Get negeri boundary from database
+        $stmt = $db->prepare("SELECT geometry FROM geojson_data WHERE kategori = 'negeri' LIMIT 1");
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$row || empty($row['geometry'])) {
+            // No boundary data, fallback to bounds check
+            global $kedahBounds;
+            return isWithinKedahBounds($lng, $lat, $kedahBounds);
+        }
+        
+        $geometry = json_decode($row['geometry'], true);
+        if (!$geometry) {
+            return false;
+        }
+        
+        $point = [$lng, $lat];
+        
+        // Handle Polygon and MultiPolygon
+        if ($geometry['type'] === 'Polygon' && isset($geometry['coordinates'][0])) {
+            return pointInPolygon($point, $geometry['coordinates'][0]);
+        } elseif ($geometry['type'] === 'MultiPolygon') {
+            foreach ($geometry['coordinates'] as $multiPoly) {
+                if (isset($multiPoly[0]) && pointInPolygon($point, $multiPoly[0])) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    } catch (Exception $e) {
+        error_log("Error checking Kedah boundary: " . $e->getMessage());
+        // Fallback to bounds check
+        global $kedahBounds;
+        return isWithinKedahBounds($lng, $lat, $kedahBounds);
+    }
+}
+
+/**
+ * Validate all records and find those outside boundary or missing GPS
+ */
+function validateRecords($db, $kategori = null, $includeMissingGPS = true) {
+    global $kedahBounds;
+    
+    $invalidRecords = [];
+    $missingGPSRecords = [];
+    $totalChecked = 0;
+    
+    try {
+        // Build query
+        $query = "SELECT id, kategori, properties, geometry FROM geojson_data";
+        $params = [];
+        
+        if ($kategori) {
+            $query .= " WHERE kategori = ?";
+            $params[] = $kategori;
+        }
+        
+        // Exclude boundary categories
+        if ($kategori) {
+            $query .= " AND kategori NOT IN ('negeri', 'daerah', 'parlimen', 'dun')";
+        } else {
+            $query .= " WHERE kategori NOT IN ('negeri', 'daerah', 'parlimen', 'dun')";
+        }
+        
+        $stmt = $db->prepare($query);
+        $stmt->execute($params);
+        
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $totalChecked++;
+            
+            $geometry = json_decode($row['geometry'], true);
+            $props = json_decode($row['properties'], true);
+            $name = $props['name'] ?? $props['NAMA'] ?? $props['Name'] ?? 'N/A';
+            
+            // Check if has GPS
+            $hasGPS = hasGPS($geometry);
+            
+            if (!$hasGPS) {
+                if ($includeMissingGPS) {
+                    // Check if has address information
+                    $address = buildAddressString($props);
+                    if ($address) {
+                        $missingGPSRecords[] = [
+                            'id' => $row['id'],
+                            'kategori' => $row['kategori'],
+                            'lng' => null,
+                            'lat' => null,
+                            'name' => $name,
+                            'reason' => 'Tiada GPS - ada alamat',
+                            'address' => $address
+                        ];
+                    } else {
+                        $missingGPSRecords[] = [
+                            'id' => $row['id'],
+                            'kategori' => $row['kategori'],
+                            'lng' => null,
+                            'lat' => null,
+                            'name' => $name,
+                            'reason' => 'Tiada GPS - tiada alamat',
+                            'address' => null
+                        ];
+                    }
+                }
+                continue;
+            }
+            
+            $coords = getCoordinatesFromGeometry($geometry);
+            if (!$coords || count($coords) < 2) {
+                continue;
+            }
+            
+            $lng = floatval($coords[0]);
+            $lat = floatval($coords[1]);
+            
+            // Quick bounds check first
+            if (!isWithinKedahBounds($lng, $lat, $kedahBounds)) {
+                // Definitely outside bounds - check if has address to geocode
+                $address = buildAddressString($props);
+                $invalidRecords[] = [
+                    'id' => $row['id'],
+                    'kategori' => $row['kategori'],
+                    'lng' => $lng,
+                    'lat' => $lat,
+                    'name' => $name,
+                    'reason' => 'GPS luar sempadan Kedah',
+                    'address' => $address,
+                    'can_geocode' => !empty($address)
+                ];
+            } else {
+                // Within bounds, but check against actual boundary polygon for accuracy
+                if (!isWithinKedahBoundary($lng, $lat, $db)) {
+                    $address = buildAddressString($props);
+                    $invalidRecords[] = [
+                        'id' => $row['id'],
+                        'kategori' => $row['kategori'],
+                        'lng' => $lng,
+                        'lat' => $lat,
+                        'name' => $name,
+                        'reason' => 'GPS luar sempadan Kedah (polygon)',
+                        'address' => $address,
+                        'can_geocode' => !empty($address)
+                    ];
+                }
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Error validating records: " . $e->getMessage());
+    }
+    
+    // Combine missing GPS and invalid GPS records
+    $allInvalid = array_merge($missingGPSRecords, $invalidRecords);
+    
+    return [
+        'total' => $totalChecked,
+        'invalid' => $allInvalid,
+        'count' => count($allInvalid),
+        'missing_gps' => count($missingGPSRecords),
+        'invalid_gps' => count($invalidRecords)
+    ];
+}
+
+// Handle AJAX requests for validation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $action = $_POST['action'];
+    // Only handle validation-related actions
+    if (!in_array($action, ['validate', 'delete', 'mark', 'check_missing_data', 'fix_missing_data', 'geocode'])) {
+        // Not a validation action, skip
+        // Continue with normal page load
+    } else {
+    header('Content-Type: application/json');
+    
+        $response = ['success' => false, 'message' => ''];
+        
+        try {
+            if ($action === 'validate') {
+            $kategori = $_POST['kategori'] ?? null;
+            $result = validateRecords($db, $kategori);
+            $response = [
+                'success' => true,
+                'data' => $result
+            ];
+        } elseif ($action === 'delete') {
+            $ids = $_POST['ids'] ?? [];
+            if (empty($ids) || !is_array($ids)) {
+                $response['message'] = 'Tiada ID rekod yang dipilih';
+            } else {
+                $placeholders = implode(',', array_fill(0, count($ids), '?'));
+                $stmt = $db->prepare("DELETE FROM geojson_data WHERE id IN ($placeholders)");
+                $stmt->execute($ids);
+                $response = [
+                    'success' => true,
+                    'message' => 'Berjaya memadam ' . count($ids) . ' rekod',
+                    'deleted' => count($ids)
+                ];
+            }
+        } elseif ($action === 'mark') {
+            $ids = $_POST['ids'] ?? [];
+            if (empty($ids) || !is_array($ids)) {
+                $response['message'] = 'Tiada ID rekod yang dipilih';
+            } else {
+                // Mark records by adding a flag in properties
+                $placeholders = implode(',', array_fill(0, count($ids), '?'));
+                $stmt = $db->prepare("SELECT id, properties FROM geojson_data WHERE id IN ($placeholders)");
+                $stmt->execute($ids);
+                
+                $updated = 0;
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $props = json_decode($row['properties'], true);
+                    if (!$props) {
+                        $props = [];
+                    }
+                    $props['_invalid_location'] = true;
+                    $props['_invalid_location_date'] = date('Y-m-d H:i:s');
+                    
+                    // Convert all properties to uppercase before saving
+                    $props = convertToUppercase($props);
+                    // Keep metadata fields as is (not uppercase)
+                    $props['_invalid_location'] = true;
+                    $props['_invalid_location_date'] = date('Y-m-d H:i:s');
+                    
+                    $updateStmt = $db->prepare("UPDATE geojson_data SET properties = ? WHERE id = ?");
+                    $updateStmt->execute([json_encode($props, JSON_UNESCAPED_UNICODE), $row['id']]);
+                    $updated++;
+                }
+                
+                $response = [
+                    'success' => true,
+                    'message' => 'Berjaya menandakan ' . $updated . ' rekod sebagai tidak sah',
+                    'marked' => $updated
+                ];
+            }
+        } elseif ($action === 'check_missing_data') {
+            // Check for records with missing DAERAH/PARLIMEN/DUN
+            $kategori = $_POST['kategori'] ?? null;
+            
+            $query = "SELECT id, kategori, properties, geometry FROM geojson_data";
+            $params = [];
+            
+            if ($kategori) {
+                $query .= " WHERE kategori = ?";
+                $params[] = $kategori;
+            } else {
+                $query .= " WHERE 1=1";
+            }
+            
+            $query .= " AND kategori NOT IN ('negeri', 'daerah', 'parlimen', 'dun')";
+            
+            $stmt = $db->prepare($query);
+            $stmt->execute($params);
+            
+            $missingDataRecords = [];
+            
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $props = json_decode($row['properties'], true);
+                if (!$props) {
+                    $props = [];
+                }
+                
+                $hasDaerah = !empty($props['DAERAH']);
+                $hasParlimen = !empty($props['PARLIMEN']);
+                $hasDun = !empty($props['DUN']);
+                
+                if (!$hasDaerah || !$hasParlimen || !$hasDun) {
+                    $missingFields = [];
+                    if (!$hasDaerah) $missingFields[] = 'DAERAH';
+                    if (!$hasParlimen) $missingFields[] = 'PARLIMEN';
+                    if (!$hasDun) $missingFields[] = 'DUN';
+                    
+                    $missingDataRecords[] = [
+                        'id' => $row['id'],
+                        'kategori' => $row['kategori'],
+                        'name' => $props['name'] ?? $props['NAMA'] ?? $props['Name'] ?? 'N/A',
+                        'missing_fields' => $missingFields,
+                        'has_gps' => hasGPS(json_decode($row['geometry'], true)),
+                        'gps_coords' => getCoordinatesFromGeometry(json_decode($row['geometry'], true))
+                    ];
+                }
+            }
+            
+            $response = [
+                'success' => true,
+                'data' => [
+                    'records' => $missingDataRecords,
+                    'count' => count($missingDataRecords)
+                ]
+            ];
+        } elseif ($action === 'fix_missing_data') {
+            // Fix missing DAERAH/PARLIMEN/DUN using reverse geocoding
+            $ids = $_POST['ids'] ?? [];
+            if (empty($ids) || !is_array($ids)) {
+                $response['message'] = 'Tiada ID rekod yang dipilih';
+            } else {
+                $placeholders = implode(',', array_fill(0, count($ids), '?'));
+                $stmt = $db->prepare("SELECT id, properties, geometry FROM geojson_data WHERE id IN ($placeholders)");
+                $stmt->execute($ids);
+                
+                $successCount = 0;
+                $failCount = 0;
+                $errors = [];
+                
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    try {
+                        $props = json_decode($row['properties'], true);
+                        $geom = json_decode($row['geometry'], true);
+                        
+                        if (!$props || !$geom) {
+                            $failCount++;
+                            $errors[] = 'ID ' . $row['id'] . ': Tiada properties atau geometry';
+                            continue;
+                        }
+                        
+                        // Enrich with reverse geocoding
+                        $enrichedProps = enrichPropertiesWithGeocode($props, $geom, $db);
+                        
+                        // Convert all properties to uppercase before saving
+                        $enrichedProps = convertToUppercase($enrichedProps);
+                        
+                        // Check if anything changed
+                        $changed = false;
+                        if (empty($props['DAERAH']) && !empty($enrichedProps['DAERAH'])) {
+                            $changed = true;
+                        }
+                        if (empty($props['PARLIMEN']) && !empty($enrichedProps['PARLIMEN'])) {
+                            $changed = true;
+                        }
+                        if (empty($props['DUN']) && !empty($enrichedProps['DUN'])) {
+                            $changed = true;
+                        }
+                        
+                        if ($changed) {
+                            // Update database
+                            $updateStmt = $db->prepare("UPDATE geojson_data SET properties = ? WHERE id = ?");
+                            $updateStmt->execute([json_encode($enrichedProps, JSON_UNESCAPED_UNICODE), $row['id']]);
+                            $successCount++;
+                        } else {
+                            $failCount++;
+                            $errors[] = 'ID ' . $row['id'] . ': Tidak dapat mendapatkan maklumat lokasi (GPS mungkin tiada atau luar sempadan)';
+                        }
+                    } catch (Exception $e) {
+                        $failCount++;
+                        $errors[] = 'ID ' . $row['id'] . ': ' . $e->getMessage();
+                    }
+                }
+                
+                $response = [
+                    'success' => true,
+                    'message' => "Berjaya mengemaskini $successCount rekod" . ($failCount > 0 ? ", $failCount gagal" : ""),
+                    'success_count' => $successCount,
+                    'fail_count' => $failCount,
+                    'errors' => array_slice($errors, 0, 10)
+                ];
+            }
+        } elseif ($action === 'geocode') {
+            $ids = $_POST['ids'] ?? [];
+            if (empty($ids) || !is_array($ids)) {
+                $response['message'] = 'Tiada ID rekod yang dipilih';
+            } else {
+                // Geocode selected records
+                $placeholders = implode(',', array_fill(0, count($ids), '?'));
+                $stmt = $db->prepare("SELECT id, properties, geometry FROM geojson_data WHERE id IN ($placeholders)");
+                $stmt->execute($ids);
+                
+                $successCount = 0;
+                $failCount = 0;
+                $errors = [];
+                
+                while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $result = geocodeRecord($row, $db);
+                    if ($result['success']) {
+                        $successCount++;
+                    } else {
+                        $failCount++;
+                        $errors[] = 'ID ' . $row['id'] . ': ' . $result['message'];
+                    }
+                    
+                    // Rate limiting: sleep 1 second between geocoding requests
+                    sleep(1);
+                }
+                
+                $response = [
+                    'success' => true,
+                    'message' => "Berjaya mengemaskini GPS untuk $successCount rekod" . ($failCount > 0 ? ", $failCount gagal" : ""),
+                    'success_count' => $successCount,
+                    'fail_count' => $failCount,
+                    'errors' => array_slice($errors, 0, 10) // Limit errors shown
+                ];
+            }
+        }
+        } catch (Exception $e) {
+            $response['message'] = 'Ralat: ' . $e->getMessage();
+        }
+        
+        echo json_encode($response, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
+
+// Get all categories for filter
+$validationCategories = [];
+try {
+    $stmt = $db->query("SELECT DISTINCT kategori FROM geojson_data WHERE kategori NOT IN ('negeri', 'daerah', 'parlimen', 'dun') ORDER BY kategori");
+    $validationCategories = $stmt->fetchAll(PDO::FETCH_COLUMN);
+} catch (Exception $e) {
+    error_log("Error fetching categories: " . $e->getMessage());
+}
+
 include 'header.php';
 ?>
 
@@ -953,20 +1561,6 @@ include 'header.php';
         <h3 class="mb-0 fw-bold text-dark"><i class="fas fa-file-alt me-3 text-primary"></i>Pengurusan Rekod Dashboard</h3>
     </div>
     
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="alert alert-info d-flex justify-content-between align-items-center">
-                <div>
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Nota :</strong> Jika ada rekod tiada maklumat GPS atau maklumat GPS berada di luar sempadan negeri Kedah, 
-                    sistem akan betulkan menggunakan alamat di dalam rekod. Sila klik fungsi ini.
-                </div>
-                <a href="utils/validate_kedah_boundary.php" class="btn btn-warning btn-sm">
-                    <i class="fas fa-map-marker-alt"></i> Semak & Betulkan Rekod GPS
-                </a>
-            </div>
-        </div>
-    </div>
 
 <div class="container-fluid mt-4">
     <div class="row">
@@ -974,17 +1568,17 @@ include 'header.php';
         <div class="col-lg-6 mb-4">
             <div class="card shadow-sm h-100 d-flex flex-column">
                 <div class="card-header bg-success text-white">
-                    <h4 class="mb-0">
-                        <i class="fas fa-download me-2"></i>Muat Turun Rekod Dashboard
+                    <h4 class="mb-0 text-white">
+                        <i class="fas fa-download me-2 text-white"></i>Muat Turun Rekod Dashboard
                     </h4>
                 </div>
                 <div class="card-body d-flex flex-column">
                     <form method="GET" id="downloadForm" class="d-flex flex-column flex-grow-1">
                         <!-- Step 1: Category Selection (Required) -->
                         <div class="card mb-3 border-warning">
-                            <div class="card-header bg-warning text-dark py-2">
-                                <h6 class="mb-0">
-                                    <i class="fas fa-tags me-2"></i>Langkah 1 : Pilih Nama Dashboard <span class="text-danger">*</span>
+                            <div class="card-header bg-warning text-white py-2">
+                                <h6 class="mb-0 text-white">
+                                    <i class="fas fa-tags me-2 text-white"></i>Langkah 1 : Pilih Nama Dashboard <span class="text-white">*</span>
                                 </h6>
                             </div>
                             <div class="card-body">
@@ -1011,8 +1605,8 @@ include 'header.php';
                         <!-- Step 2: Format Selection -->
                         <div class="card mb-3">
                             <div class="card-header bg-info text-white py-2">
-                                <h6 class="mb-0">
-                                    <i class="fas fa-file me-2"></i>Langkah 2 : Pilih Jenis File
+                                <h6 class="mb-0 text-white">
+                                    <i class="fas fa-file me-2 text-white"></i>Langkah 2 : Pilih Jenis File
                                 </h6>
                             </div>
                             <div class="card-body">
@@ -1076,8 +1670,8 @@ include 'header.php';
         <div class="col-lg-6 mb-4">
             <div class="card shadow-sm h-100 d-flex flex-column">
                 <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">
-                        <i class="fas fa-upload me-2"></i>Muat Naik Rekod Dashboard
+                    <h4 class="mb-0 text-white">
+                        <i class="fas fa-upload me-2 text-white"></i>Muat Naik Rekod Dashboard
                     </h4>
                 </div>
                 <div class="card-body d-flex flex-column">
@@ -1110,10 +1704,10 @@ include 'header.php';
                     
                     <form method="POST" enctype="multipart/form-data" id="unifiedUploadForm" class="d-flex flex-column flex-grow-1">
                                 <!-- Step 1: Category Selection (Required) -->
-                                <div class="card mb-3 border-warning">
-                                    <div class="card-header bg-warning text-dark py-2">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-tags me-2"></i>Langkah 1 : Pilih Nama Dashboard <span class="text-danger">*</span>
+                                <div class="card mb-3" style="border: 1px solid #cbd5e1;">
+                                    <div class="card-header bg-warning text-white py-2">
+                                        <h6 class="mb-0 text-white">
+                                            <i class="fas fa-tags me-2 text-white"></i>Langkah 1 : Pilih Nama Dashboard <span class="text-white">*</span>
                                         </h6>
                                     </div>
                                     <div class="card-body">
@@ -1141,8 +1735,8 @@ include 'header.php';
                                 <!-- Step 2: File Selection -->
                                 <div class="card mb-3">
                                     <div class="card-header bg-info text-white py-2">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-file me-2"></i>Langkah 2 : Pilih File (GeoJSON atau Excel)
+                                        <h6 class="mb-0 text-white">
+                                            <i class="fas fa-file me-2 text-white"></i>Langkah 2 : Pilih Jenis File
                                         </h6>
                                     </div>
                                     <div class="card-body">
@@ -1229,6 +1823,90 @@ include 'header.php';
                                     </button>
                                 </div>
                             </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Validation Section -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning text-white">
+                <h4 class="mb-0 text-white">
+                    <i class="fas fa-map-marker-alt me-2 text-white"></i>Semak & Betulkan Rekod GPS Luar Sempadan Kedah
+                </h4>
+            </div>
+            <div class="card-body">
+                <form id="validateForm">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label for="validate_kategori" class="form-label">Kategori (Pilihan)</label>
+                            <select class="form-select" id="validate_kategori" name="kategori">
+                                <option value="">Sila Pilih Kategori</option>
+                                <?php foreach ($validationCategories as $cat): ?>
+                                    <option value="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="includeMissingGPS" checked>
+                                <label class="form-check-label" for="includeMissingGPS">
+                                    <i class="fas fa-map-marker-alt"></i> Termasuk rekod tanpa GPS
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Semak Rekod
+                            </button>
+                            <button type="button" class="btn btn-info" id="checkMissingDataBtn">
+                                <i class="fas fa-info-circle"></i> Semak Tiada Rekod Alamat
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                
+                <div class="loading mt-3" id="validationLoading" style="display: none;">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Memproses...</span>
+                        </div>
+                        <p class="mt-2">Sedang menyemak rekod...</p>
+                    </div>
+                </div>
+                
+                <div id="validationResults" style="display: none;">
+                    <div class="card mb-3 mt-3">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">
+                                <i class="fas fa-exclamation-triangle"></i> 
+                                Rekod Ditemui: <span id="invalidCount">0</span> / <span id="totalCount">0</span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <button class="btn btn-sm btn-outline-primary" id="selectAll">
+                                    <i class="fas fa-check-square"></i> Pilih Semua
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" id="deselectAll">
+                                    <i class="fas fa-square"></i> Nyahpilih Semua
+                                </button>
+                                <button class="btn btn-sm btn-danger" id="deleteSelected">
+                                    <i class="fas fa-trash"></i> Padam Rekod Terpilih
+                                </button>
+                                <button class="btn btn-sm btn-warning" id="markSelected">
+                                    <i class="fas fa-flag"></i> Tandakan Sebagai Tidak Sah
+                                </button>
+                                <button class="btn btn-sm btn-success" id="geocodeSelected">
+                                    <i class="fas fa-map-marker-alt"></i> Betulkan GPS dari Alamat
+                                </button>
+                            </div>
+                            <div id="recordsList"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1729,6 +2407,400 @@ function enableFormatSelect(categoryValue) {
         }
     }
 }
+
+// Validation functionality
+(function() {
+    let currentRecords = [];
+    
+    const validateForm = document.getElementById('validateForm');
+    if (validateForm) {
+        validateForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const kategori = document.getElementById('validate_kategori').value;
+            const includeMissingGPS = document.getElementById('includeMissingGPS').checked;
+            const loading = document.getElementById('validationLoading');
+            const results = document.getElementById('validationResults');
+            
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            
+            try {
+                const formData = new FormData();
+                formData.append('action', 'validate');
+                if (kategori) {
+                    formData.append('kategori', kategori);
+                }
+                formData.append('includeMissingGPS', includeMissingGPS ? '1' : '0');
+                
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentRecords = data.data.invalid;
+                    displayResults(data.data);
+                } else {
+                    alert('Ralat: ' + (data.message || 'Tidak dapat menyemak rekod'));
+                }
+            } catch (error) {
+                alert('Ralat: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+    }
+    
+    function displayResults(data) {
+        document.getElementById('invalidCount').textContent = data.count;
+        document.getElementById('totalCount').textContent = data.total;
+        
+        const recordsList = document.getElementById('recordsList');
+        
+        if (data.count === 0) {
+            recordsList.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Tiada rekod yang berada di luar sempadan Kedah.</div>';
+        } else {
+            let html = '<div class="table-responsive"><table class="table table-hover"><thead><tr>';
+            html += '<th><input type="checkbox" id="selectAllCheckbox"></th>';
+            html += '<th>ID</th><th>Kategori</th><th>Nama</th><th>Koordinat</th><th>Sebab</th><th>Alamat</th>';
+            html += '</tr></thead><tbody>';
+            
+            data.invalid.forEach(record => {
+                html += '<tr class="invalid-record" style="background-color: #fff3cd; border-left: 4px solid #ffc107;">';
+                html += '<td><input type="checkbox" class="record-checkbox" value="' + record.id + '"' + 
+                        (record.can_geocode !== false ? ' data-can-geocode="true"' : '') + '></td>';
+                html += '<td>' + record.id + '</td>';
+                html += '<td>' + escapeHtml(record.kategori) + '</td>';
+                html += '<td>' + escapeHtml(record.name) + '</td>';
+                if (record.lng !== null && record.lat !== null) {
+                    html += '<td class="coords" style="font-family: monospace; color: #dc3545;">' + record.lng.toFixed(6) + ', ' + record.lat.toFixed(6) + '</td>';
+                } else {
+                    html += '<td class="coords text-muted">Tiada GPS</td>';
+                }
+                html += '<td><span class="badge bg-warning">' + escapeHtml(record.reason) + '</span></td>';
+                if (record.address) {
+                    html += '<td><small class="text-muted">' + escapeHtml(record.address.substring(0, 50)) + 
+                            (record.address.length > 50 ? '...' : '') + '</small></td>';
+                } else {
+                    html += '<td><small class="text-danger">Tiada alamat</small></td>';
+                }
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table></div>';
+            recordsList.innerHTML = html;
+            
+            // Setup checkbox handlers
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    document.querySelectorAll('.record-checkbox').forEach(cb => {
+                        cb.checked = this.checked;
+                    });
+                });
+            }
+        }
+        
+        document.getElementById('validationResults').style.display = 'block';
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Action buttons
+    const selectAllBtn = document.getElementById('selectAll');
+    const deselectAllBtn = document.getElementById('deselectAll');
+    const deleteSelectedBtn = document.getElementById('deleteSelected');
+    const markSelectedBtn = document.getElementById('markSelected');
+    const geocodeSelectedBtn = document.getElementById('geocodeSelected');
+    const checkMissingDataBtn = document.getElementById('checkMissingDataBtn');
+    
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            document.querySelectorAll('.record-checkbox').forEach(cb => cb.checked = true);
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (selectAllCheckbox) selectAllCheckbox.checked = true;
+        });
+    }
+    
+    if (deselectAllBtn) {
+        deselectAllBtn.addEventListener('click', function() {
+            document.querySelectorAll('.record-checkbox').forEach(cb => cb.checked = false);
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+        });
+    }
+    
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.addEventListener('click', async function() {
+            const selected = Array.from(document.querySelectorAll('.record-checkbox:checked')).map(cb => cb.value);
+            
+            if (selected.length === 0) {
+                alert('Sila pilih sekurang-kurangnya satu rekod untuk dipadam.');
+                return;
+            }
+            
+            if (!confirm('Adakah anda pasti mahu memadam ' + selected.length + ' rekod? Tindakan ini tidak boleh dibatalkan.')) {
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('action', 'delete');
+                selected.forEach(id => formData.append('ids[]', id));
+                
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Berjaya memadam ' + data.deleted + ' rekod.');
+                    validateForm.dispatchEvent(new Event('submit'));
+                } else {
+                    alert('Ralat: ' + (data.message || 'Tidak dapat memadam rekod'));
+                }
+            } catch (error) {
+                alert('Ralat: ' + error.message);
+            }
+        });
+    }
+    
+    if (markSelectedBtn) {
+        markSelectedBtn.addEventListener('click', async function() {
+            const selected = Array.from(document.querySelectorAll('.record-checkbox:checked')).map(cb => cb.value);
+            
+            if (selected.length === 0) {
+                alert('Sila pilih sekurang-kurangnya satu rekod untuk ditandakan.');
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('action', 'mark');
+                selected.forEach(id => formData.append('ids[]', id));
+                
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Berjaya menandakan ' + data.marked + ' rekod sebagai tidak sah.');
+                    validateForm.dispatchEvent(new Event('submit'));
+                } else {
+                    alert('Ralat: ' + (data.message || 'Tidak dapat menandakan rekod'));
+                }
+            } catch (error) {
+                alert('Ralat: ' + error.message);
+            }
+        });
+    }
+    
+    if (geocodeSelectedBtn) {
+        geocodeSelectedBtn.addEventListener('click', async function() {
+            const selected = Array.from(document.querySelectorAll('.record-checkbox:checked'))
+                .filter(cb => cb.dataset.canGeocode === 'true')
+                .map(cb => cb.value);
+            
+            if (selected.length === 0) {
+                alert('Sila pilih sekurang-kurangnya satu rekod yang mempunyai maklumat alamat untuk dibetulkan.');
+                return;
+            }
+            
+            if (!confirm('Adakah anda pasti mahu betulkan GPS untuk ' + selected.length + ' rekod berdasarkan alamat? Proses ini mungkin mengambil masa yang lama (1 saat setiap rekod).')) {
+                return;
+            }
+            
+            const btn = this;
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('action', 'geocode');
+                selected.forEach(id => formData.append('ids[]', id));
+                
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    let message = data.message;
+                    if (data.errors && data.errors.length > 0) {
+                        message += '\n\nRalat:\n' + data.errors.slice(0, 5).join('\n');
+                        if (data.errors.length > 5) {
+                            message += '\n... dan ' + (data.errors.length - 5) + ' lagi';
+                        }
+                    }
+                    alert(message);
+                    validateForm.dispatchEvent(new Event('submit'));
+                } else {
+                    alert('Ralat: ' + (data.message || 'Tidak dapat membetulkan GPS'));
+                }
+            } catch (error) {
+                alert('Ralat: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+    }
+    
+    if (checkMissingDataBtn) {
+        checkMissingDataBtn.addEventListener('click', async function() {
+            const kategori = document.getElementById('validate_kategori').value;
+            const loading = document.getElementById('validationLoading');
+            const results = document.getElementById('validationResults');
+            
+            loading.style.display = 'block';
+            results.style.display = 'none';
+            
+            try {
+                const formData = new FormData();
+                formData.append('action', 'check_missing_data');
+                if (kategori) {
+                    formData.append('kategori', kategori);
+                }
+                
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayMissingDataResults(data.data);
+                } else {
+                    alert('Ralat: ' + (data.message || 'Tidak dapat menyemak rekod'));
+                }
+            } catch (error) {
+                alert('Ralat: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+    }
+    
+    function displayMissingDataResults(data) {
+        document.getElementById('invalidCount').textContent = data.count;
+        document.getElementById('totalCount').textContent = data.count;
+        
+        const recordsList = document.getElementById('recordsList');
+        
+        if (data.count === 0) {
+            recordsList.innerHTML = '<div class="alert alert-success"><i class="fas fa-check-circle"></i> Semua rekod mempunyai maklumat lokasi lengkap (DAERAH, PARLIMEN, DUN).</div>';
+        } else {
+            let html = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Ditemui ' + data.count + ' rekod yang tiada maklumat lokasi lengkap.</div>';
+            html += '<div class="table-responsive"><table class="table table-hover"><thead><tr>';
+            html += '<th><input type="checkbox" id="selectAllCheckbox2"></th>';
+            html += '<th>ID</th><th>Kategori</th><th>Nama</th><th>Field Tiada</th><th>Ada GPS</th>';
+            html += '</tr></thead><tbody>';
+            
+            data.records.forEach(record => {
+                html += '<tr class="invalid-record" style="background-color: #fff3cd; border-left: 4px solid #ffc107;">';
+                html += '<td><input type="checkbox" class="record-checkbox" value="' + record.id + '" data-can-fix="' + (record.has_gps ? 'true' : 'false') + '"></td>';
+                html += '<td>' + record.id + '</td>';
+                html += '<td>' + escapeHtml(record.kategori) + '</td>';
+                html += '<td>' + escapeHtml(record.name) + '</td>';
+                html += '<td><span class="badge bg-danger">' + escapeHtml(record.missing_fields.join(', ')) + '</span></td>';
+                html += '<td>' + (record.has_gps ? '<span class="badge bg-success">Ya</span>' : '<span class="badge bg-warning">Tidak</span>') + '</td>';
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table></div>';
+            html += '<div class="mt-3">';
+            html += '<button class="btn btn-sm btn-success" id="fixMissingDataBtn">';
+            html += '<i class="fas fa-magic"></i> Betulkan Rekod Terpilih (Reverse Geocoding)';
+            html += '</button>';
+            html += '</div>';
+            recordsList.innerHTML = html;
+            
+            // Setup checkbox handlers
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox2');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    document.querySelectorAll('.record-checkbox').forEach(cb => {
+                        cb.checked = this.checked;
+                    });
+                });
+            }
+            
+            // Setup fix button
+            const fixBtn = document.getElementById('fixMissingDataBtn');
+            if (fixBtn) {
+                fixBtn.addEventListener('click', async function() {
+                    const selected = Array.from(document.querySelectorAll('.record-checkbox:checked'))
+                        .filter(cb => cb.dataset.canFix === 'true')
+                        .map(cb => cb.value);
+                    
+                    if (selected.length === 0) {
+                        alert('Sila pilih sekurang-kurangnya satu rekod yang mempunyai GPS untuk dibetulkan.');
+                        return;
+                    }
+                    
+                    if (!confirm('Adakah anda pasti mahu betulkan maklumat lokasi untuk ' + selected.length + ' rekod? Proses ini akan menggunakan reverse geocoding berdasarkan GPS koordinat.')) {
+                        return;
+                    }
+                    
+                    const btn = this;
+                    const originalText = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+                    
+                    try {
+                        const formData = new FormData();
+                        formData.append('action', 'fix_missing_data');
+                        selected.forEach(id => formData.append('ids[]', id));
+                        
+                        const response = await fetch(window.location.href, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            let message = data.message;
+                            if (data.errors && data.errors.length > 0) {
+                                message += '\n\nRalat:\n' + data.errors.slice(0, 5).join('\n');
+                                if (data.errors.length > 5) {
+                                    message += '\n... dan ' + (data.errors.length - 5) + ' lagi';
+                                }
+                            }
+                            alert(message);
+                            checkMissingDataBtn.dispatchEvent(new Event('click'));
+                        } else {
+                            alert('Ralat: ' + (data.message || 'Tidak dapat membetulkan rekod'));
+                        }
+                    } catch (error) {
+                        alert('Ralat: ' + error.message);
+                    } finally {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }
+                });
+            }
+        }
+        
+        document.getElementById('validationResults').style.display = 'block';
+    }
+})();
 </script>
 
 <?php include 'footer.php'; ?>

@@ -79,6 +79,12 @@ try {
             // Enrich with geocode data
             $enrichedProps = enrichPropertiesWithGeocode($props, $geom, $db);
             
+            // Convert all properties to uppercase before saving
+            require_once __DIR__ . '/text_helper.php';
+            if (function_exists('convertToUppercase')) {
+                $enrichedProps = convertToUppercase($enrichedProps);
+            }
+            
             // Check if anything changed
             $changed = false;
             if (!$hasDaerah && !empty($enrichedProps['DAERAH'])) {

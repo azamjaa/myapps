@@ -9,7 +9,20 @@ $checkAdmin->execute([$_SESSION['user_id']]);
 $is_admin = $checkAdmin->fetch()['cnt'] > 0;
 
 if (!$is_admin) {
-    header("Location: dashboard_aplikasi.php#direktoriAplikasiContainer");
+    $redirectParams = '';
+    if (isset($_GET['direktori_search']) || isset($_GET['direktori_kategori'])) {
+        $redirectParams = '?' . http_build_query(array_filter([
+            'direktori_search' => $_GET['direktori_search'] ?? '',
+            'direktori_kategori' => $_GET['direktori_kategori'] ?? '',
+            'direktori_sort' => $_GET['direktori_sort'] ?? '',
+            'direktori_order' => $_GET['direktori_order'] ?? '',
+            'direktori_page' => $_GET['direktori_page'] ?? ''
+        ]));
+    } elseif (isset($_SERVER['HTTP_REFERER'])) {
+        $refQuery = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_QUERY);
+        if ($refQuery) $redirectParams = '?' . $refQuery;
+    }
+    header("Location: dashboard_aplikasi.php" . $redirectParams . "#direktoriAplikasiContainer");
     exit();
 }
 
@@ -33,7 +46,20 @@ if ($edit_mode) {
     $aplikasi_data = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if (!$aplikasi_data) {
-        header("Location: dashboard_aplikasi.php#direktoriAplikasiContainer");
+        $redirectParams = '';
+        if (isset($_GET['direktori_search']) || isset($_GET['direktori_kategori'])) {
+            $redirectParams = '?' . http_build_query(array_filter([
+                'direktori_search' => $_GET['direktori_search'] ?? '',
+                'direktori_kategori' => $_GET['direktori_kategori'] ?? '',
+                'direktori_sort' => $_GET['direktori_sort'] ?? '',
+                'direktori_order' => $_GET['direktori_order'] ?? '',
+                'direktori_page' => $_GET['direktori_page'] ?? ''
+            ]));
+        } elseif (isset($_SERVER['HTTP_REFERER'])) {
+            $refQuery = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_QUERY);
+            if ($refQuery) $redirectParams = '?' . $refQuery;
+        }
+        header("Location: dashboard_aplikasi.php" . $redirectParams . "#direktoriAplikasiContainer");
         exit();
     }
 }
@@ -63,6 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
+        // Convert text fields to uppercase
+        $nama_aplikasi = mb_strtoupper(trim($nama_aplikasi), 'UTF-8');
+        $keterangan = mb_strtoupper(trim($keterangan), 'UTF-8');
+        
         // Sanitize text fields
         $nama_aplikasi = htmlspecialchars($nama_aplikasi, ENT_QUOTES, 'UTF-8');
         $keterangan = htmlspecialchars($keterangan, ENT_QUOTES, 'UTF-8');
@@ -81,7 +111,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['success_msg'] = "Aplikasi '$nama_aplikasi' berjaya ditambah!";
         }
 
-        header("Location: dashboard_aplikasi.php#direktoriAplikasiContainer");
+        // Preserve query parameters from GET or referrer
+        $redirectParams = '';
+        if (isset($_GET['direktori_search']) || isset($_GET['direktori_kategori']) || isset($_GET['direktori_sort']) || isset($_GET['direktori_page'])) {
+            $redirectParams = '?' . http_build_query(array_filter([
+                'direktori_search' => $_GET['direktori_search'] ?? '',
+                'direktori_kategori' => $_GET['direktori_kategori'] ?? '',
+                'direktori_sort' => $_GET['direktori_sort'] ?? '',
+                'direktori_order' => $_GET['direktori_order'] ?? '',
+                'direktori_page' => $_GET['direktori_page'] ?? ''
+            ]));
+        } elseif (isset($_SERVER['HTTP_REFERER'])) {
+            $refQuery = parse_url($_SERVER['HTTP_REFERER'], PHP_URL_QUERY);
+            if ($refQuery) $redirectParams = '?' . $refQuery;
+        }
+        header("Location: dashboard_aplikasi.php" . $redirectParams . "#direktoriAplikasiContainer");
         exit();
 
     } catch (Exception $e) {
@@ -186,7 +230,20 @@ $kategoriList = $db->query("SELECT id_kategori, nama_kategori FROM kategori WHER
                     <button type="submit" class="btn <?php echo $edit_mode ? 'btn-warning' : 'btn-primary'; ?> px-4">
                         <i class="fas fa-save me-2"></i> <?php echo $edit_mode ? 'Kemaskini' : 'Simpan'; ?> Aplikasi
                     </button>
-                    <a href="dashboard_aplikasi.php" class="btn btn-secondary px-4">
+                    <?php
+                    // Preserve query parameters for cancel button
+                    $cancelParams = '';
+                    if (isset($_GET['direktori_search']) || isset($_GET['direktori_kategori']) || isset($_GET['direktori_sort']) || isset($_GET['direktori_page'])) {
+                        $cancelParams = '?' . http_build_query(array_filter([
+                            'direktori_search' => $_GET['direktori_search'] ?? '',
+                            'direktori_kategori' => $_GET['direktori_kategori'] ?? '',
+                            'direktori_sort' => $_GET['direktori_sort'] ?? '',
+                            'direktori_order' => $_GET['direktori_order'] ?? '',
+                            'direktori_page' => $_GET['direktori_page'] ?? ''
+                        ]));
+                    }
+                    ?>
+                    <a href="dashboard_aplikasi.php<?php echo $cancelParams; ?>#direktoriAplikasiContainer" class="btn btn-secondary px-4">
                         <i class="fas fa-times me-2"></i> Batal
                     </a>
                 </div>

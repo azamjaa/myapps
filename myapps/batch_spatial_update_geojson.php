@@ -198,6 +198,12 @@ try {
                 }
                 
                 if ($changed) {
+                    // Convert all properties to uppercase before saving
+                    require_once __DIR__ . '/utils/text_helper.php';
+                    if (function_exists('convertToUppercase')) {
+                        $props = convertToUppercase($props);
+                    }
+                    
                     // Update database
                     $propsJson = json_encode($props, JSON_UNESCAPED_UNICODE);
                     $updateStmt = $db->prepare("UPDATE geojson_data SET properties = ? WHERE id = ?");

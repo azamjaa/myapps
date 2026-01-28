@@ -333,6 +333,17 @@ function geocodeRecord($record, $db) {
     $properties['_geocoded_address'] = $address;
     $properties['_geocoded_location'] = $gpsResult['display_name'] ?? $address;
     
+    // Convert all text properties to uppercase (except metadata fields)
+    require_once __DIR__ . '/text_helper.php';
+    if (function_exists('convertToUppercase')) {
+        $properties = convertToUppercase($properties);
+        // Restore metadata fields (not uppercase)
+        $properties['_geocoded'] = true;
+        $properties['_geocoded_date'] = date('Y-m-d H:i:s');
+        $properties['_geocoded_address'] = $address;
+        $properties['_geocoded_location'] = $gpsResult['display_name'] ?? $address;
+    }
+    
     // Update database
     try {
         $updateStmt = $db->prepare("

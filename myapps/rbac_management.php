@@ -722,6 +722,173 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
                             </div>
                         </div>
 
+                        <!-- Pages & Permissions Mapping -->
+                        <div class="row mt-4 mb-4">
+                            <div class="col-12">
+                                <h6 class="mb-3">📄 Pages & Permissions Mapping:</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover" style="font-size: 13px;">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th style="width: 200px;"><strong>Page / Menu</strong></th>
+                                                <th><strong>Permissions Required</strong></th>
+                                                <th><strong>Description</strong></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td><strong>Dashboard Aplikasi</strong><br><code>dashboard_aplikasi.php</code></td>
+                                                <td>
+                                                    <span class="badge bg-primary">view_dashboard</span><br>
+                                                    <span class="badge bg-success">create_application</span> (Tambah Aplikasi)<br>
+                                                    <span class="badge bg-warning">edit_application</span> (Edit Aplikasi - termasuk tukar status)<br>
+                                                    <span class="badge bg-info">export_data</span> (Export Excel)
+                                                </td>
+                                                <td>Paparan statistik aplikasi, senarai aplikasi dengan filter, carian, sort, dan export. Admin boleh tambah/edit aplikasi. <strong>Nota:</strong> Sistem menggunakan soft delete - aplikasi tidak dipadam, hanya status ditukar kepada "Tidak Aktif" (status = 0).</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Dashboard Perjawatan</strong><br><code>dashboard_perjawatan.php</code></td>
+                                                <td>
+                                                    <span class="badge bg-primary">view_dashboard</span><br>
+                                                    <span class="badge bg-success">create_user</span> (Tambah Staf)<br>
+                                                    <span class="badge bg-warning">edit_user</span> (Edit Staf)<br>
+                                                    <span class="badge bg-info">export_data</span> (Export Excel)
+                                                </td>
+                                                <td>Paparan statistik staf, direktori staf dengan filter (Masih Bekerja/Bersara/Berhenti), kalendar hari lahir, dan graf kategori. Admin boleh tambah/edit staf.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Dashboard Pencapaian</strong><br><code>dashboard_pencapaian.php</code></td>
+                                                <td>
+                                                    <span class="badge bg-primary">view_dashboard</span><br>
+                                                    <span class="badge bg-info">export_data</span> (Export Excel)
+                                                </td>
+                                                <td>Visualisasi data geospatial dengan peta interaktif, graf donut (Daerah/Parlimen/DUN), dan senarai rekod detail dengan pagination, sort, dan filter.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Pengurusan Rekod Dashboard</strong><br><code>pengurusan_rekod_dashboard.php</code></td>
+                                                <td>
+                                                    <span class="badge bg-danger">super_admin</span> (Admin sahaja)
+                                                </td>
+                                                <td>Upload/download data GeoJSON/Excel untuk Dashboard Pencapaian. Semak & betulkan rekod GPS luar sempadan Kedah. Isi maklumat lokasi (DAERAH/PARLIMEN/DUN) menggunakan reverse geocoding.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Pengurusan RBAC</strong><br><code>rbac_management.php</code></td>
+                                                <td>
+                                                    <span class="badge bg-danger">super_admin</span> (Super Admin sahaja)
+                                                </td>
+                                                <td>Menguruskan users, roles, permissions, dan matriks akses. Toggle permissions untuk roles dengan klik pada matriks.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Manual Pengguna</strong><br><code>manual.php</code></td>
+                                                <td>
+                                                    <span class="badge bg-secondary">Semua pengguna</span>
+                                                </td>
+                                                <td>Dokumentasi lengkap untuk semua features dan fungsi dalam sistem MyApps KEDA.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Proses Aplikasi</strong><br><code>proses_aplikasi.php</code></td>
+                                                <td>
+                                                    <span class="badge bg-success">create_application</span> (Tambah)<br>
+                                                    <span class="badge bg-warning">edit_application</span> (Edit)
+                                                </td>
+                                                <td>Form untuk tambah/edit aplikasi. Redirect kembali ke Dashboard Aplikasi selepas simpan.</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>Proses Staf</strong><br><code>proses_staf.php</code></td>
+                                                <td>
+                                                    <span class="badge bg-success">create_user</span> (Tambah)<br>
+                                                    <span class="badge bg-warning">edit_user</span> (Edit - Admin full access, User edit sendiri sahaja dengan akses terhad)
+                                                </td>
+                                                <td>Form untuk tambah/edit staf. User biasa hanya boleh edit profil sendiri (emel, telefon, gred, bahagian). Redirect kembali ke Dashboard Perjawatan selepas simpan.</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Menu Structure -->
+                        <div class="row mt-4 mb-4">
+                            <div class="col-12">
+                                <h6 class="mb-3">📋 Struktur Menu Sidebar:</h6>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <ul style="list-style: none; padding-left: 0;">
+                                            <li class="mb-2"><i class="fas fa-chart-line text-primary me-2"></i><strong>Dashboard Aplikasi</strong> - Statistik dan senarai aplikasi</li>
+                                            <li class="mb-2"><i class="fas fa-tachometer-alt text-success me-2"></i><strong>Dashboard Perjawatan</strong> - Statistik staf, direktori staf, kalendar</li>
+                                            <li class="mb-2"><i class="fas fa-map-marked-alt text-danger me-2"></i><strong>Dashboard Pencapaian</strong> - Visualisasi data geospatial</li>
+                                            <li class="mb-2" style="padding-left: 20px;"><i class="fas fa-file-alt text-warning me-2"></i><strong>Pengurusan Rekod Dashboard</strong> <span class="badge bg-danger">Admin</span> - Upload/download data</li>
+                                            <li class="mb-2"><i class="fas fa-book-open text-info me-2"></i><strong>Manual Pengguna</strong> - Dokumentasi sistem</li>
+                                            <li class="mb-2"><i class="fas fa-user-shield text-danger me-2"></i><strong>Pengurusan RBAC</strong> <span class="badge bg-danger">Super Admin</span> - Kawalan akses</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Common Permissions -->
+                        <div class="row mt-4 mb-4">
+                            <div class="col-12">
+                                <h6 class="mb-3">🔐 Senarai Permissions Umum:</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-primary text-white">
+                                                <strong>User Management</strong>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="mb-0">
+                                                    <li><code>create_user</code> - Tambah staf baharu</li>
+                                                    <li><code>edit_user</code> - Edit maklumat staf</li>
+                                                    <li><code>delete_user</code> - Padam staf (jika ada)</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-success text-white">
+                                                <strong>Application Management</strong>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="mb-0">
+                                                    <li><code>create_application</code> - Tambah aplikasi baharu</li>
+                                                    <li><code>edit_application</code> - Edit maklumat aplikasi dan tukar status (Aktif/Tidak Aktif)</li>
+                                                    <li class="text-muted"><small><i class="fas fa-info-circle"></i> Sistem menggunakan soft delete - aplikasi tidak dipadam, hanya status ditukar kepada "Tidak Aktif"</small></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-info text-white">
+                                                <strong>Data Access</strong>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="mb-0">
+                                                    <li><code>view_dashboard</code> - Lihat dashboard</li>
+                                                    <li><code>export_data</code> - Export data ke Excel</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card mb-3">
+                                            <div class="card-header bg-warning text-dark">
+                                                <strong>System Administration</strong>
+                                            </div>
+                                            <div class="card-body">
+                                                <ul class="mb-0">
+                                                    <li><code>manage_roles</code> - Urus roles dan permissions</li>
+                                                    <li><code>super_admin</code> - Akses penuh (Super Admin sahaja)</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <!-- Cara Mengubah Akses -->
                         <div class="row mt-4">
                             <div class="col-12">
@@ -734,6 +901,16 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
                                         <li>Pilih <strong>Role</strong> baru dari dropdown (rujuk matriks di atas untuk lihat permissions)</li>
                                         <li>Klik <strong>Simpan</strong></li>
                                         <li>Pengguna sekarang akan dapat akses mengikut role baru</li>
+                                    </ol>
+                                </div>
+                                <div class="alert alert-info mt-3" role="alert">
+                                    <h6 class="alert-heading mb-2">💡 Bagaimana Toggle Permission untuk Role?</h6>
+                                    <ol style="margin: 0; padding-left: 20px; font-size: 14px;">
+                                        <li>Buka tab <strong>Struktur Pengurusan RBAC</strong></li>
+                                        <li>Lihat matriks Roles & Permissions</li>
+                                        <li>Klik pada cell (✓/✗) untuk toggle permission</li>
+                                        <li>Permission akan ditambah/dihapus secara automatik</li>
+                                        <li>Semua pengguna dengan role tersebut akan dapat akses baru dengan segera</li>
                                     </ol>
                                 </div>
                             </div>

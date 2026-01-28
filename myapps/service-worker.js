@@ -64,11 +64,18 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(event.request)
                 .then((response) => {
-                    // Update cache with new version
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseClone);
-                    });
+                    // Clone response BEFORE using it to avoid "Response body is already used" error
+                    // Only clone if response is ok and not already consumed
+                    if (response && response.status === 200 && response.body) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseClone).catch((err) => {
+                                console.warn('[ServiceWorker] Cache put failed:', err);
+                            });
+                        }).catch((err) => {
+                            console.warn('[ServiceWorker] Cache open failed:', err);
+                        });
+                    }
                     return response;
                 })
                 .catch(() => {
@@ -84,9 +91,15 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(event.request).then((response) => {
             return response || fetch(event.request).then((fetchResponse) => {
-                if (fetchResponse && fetchResponse.status === 200) {
+                // Clone response BEFORE using it to avoid "Response body is already used" error
+                if (fetchResponse && fetchResponse.status === 200 && fetchResponse.body) {
+                    const responseClone = fetchResponse.clone();
                     caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, fetchResponse.clone());
+                        cache.put(event.request, responseClone).catch((err) => {
+                            console.warn('[ServiceWorker] Cache put failed:', err);
+                        });
+                    }).catch((err) => {
+                        console.warn('[ServiceWorker] Cache open failed:', err);
                     });
                 }
                 return fetchResponse;

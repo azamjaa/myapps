@@ -26,7 +26,7 @@
     Header set X-XSS-Protection "1; mode=block"
     Header set X-Content-Type-Options "nosniff"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
-    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; img-src 'self' data: https://cdn-icons-png.flaticon.com https://*.tile.openstreetmap.org https://*.tile.osm.org; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self' http://localhost:11434 https://cdn.jsdelivr.net https://unpkg.com https://*.tile.openstreetmap.org https://*.tile.osm.org;"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://*.jsdelivr.net https://*.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://*.jsdelivr.net https://*.cloudflare.com; img-src 'self' data: blob: https://cdn-icons-png.flaticon.com https://*.tile.openstreetmap.org https://*.tile.osm.org https://*.basemaps.cartocdn.com; font-src 'self' data: https://cdnjs.cloudflare.com https://*.cloudflare.com; connect-src 'self' http://localhost:11434 https://cdn.jsdelivr.net https://unpkg.com https://*.jsdelivr.net https://*.cloudflare.com https://*.tile.openstreetmap.org https://*.tile.osm.org https://*.basemaps.cartocdn.com; worker-src 'self' blob:; child-src 'self' blob:;"
 </IfModule>
 
 

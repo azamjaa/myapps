@@ -138,6 +138,11 @@ class AplikasiAPI extends API {
         try {
             $data = $this->sanitize($this->getData());
             
+            // Convert text fields to uppercase
+            $data['nama_sistem'] = isset($data['nama_sistem']) ? mb_strtoupper(trim($data['nama_sistem']), 'UTF-8') : null;
+            $data['pemilik'] = isset($data['pemilik']) ? mb_strtoupper(trim($data['pemilik']), 'UTF-8') : null;
+            $data['penerangan'] = isset($data['penerangan']) ? mb_strtoupper(trim($data['penerangan']), 'UTF-8') : null;
+            
             $sql = "INSERT INTO aplikasi (nama_sistem, jenis, pemilik, url, penerangan) 
                     VALUES (?, ?, ?, ?, ?)";
             $stmt = $this->db->prepare($sql);
@@ -176,6 +181,17 @@ class AplikasiAPI extends API {
             
             if (!$checkStmt->fetch()) {
                 $this->sendResponse(404, false, 'Application not found');
+            }
+            
+            // Convert text fields to uppercase
+            if (isset($data['nama_sistem'])) {
+                $data['nama_sistem'] = mb_strtoupper(trim($data['nama_sistem']), 'UTF-8');
+            }
+            if (isset($data['pemilik'])) {
+                $data['pemilik'] = mb_strtoupper(trim($data['pemilik']), 'UTF-8');
+            }
+            if (isset($data['penerangan'])) {
+                $data['penerangan'] = mb_strtoupper(trim($data['penerangan']), 'UTF-8');
             }
             
             $sql = "UPDATE aplikasi SET 
