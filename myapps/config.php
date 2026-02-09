@@ -127,7 +127,7 @@ return [
     'upload' => [
         'max_size' => env('UPLOAD_MAX_SIZE', 2097152), // 2MB in bytes
         'allowed_types' => explode(',', env('UPLOAD_ALLOWED_TYPES', 'jpg,jpeg,png')),
-        'path' => env('UPLOAD_PATH', 'uploads/'),
+        'path' => env('UPLOAD_PATH', 'uploads/profile/'),
     ],
 ];
 

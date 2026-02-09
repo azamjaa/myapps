@@ -4,9 +4,10 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['user_id'])) { 
-    header("Location: index.php"); 
-    exit(); 
+// Benarkan akses tanpa login untuk Advanced Data Engine borang awam (id_kategori=2 Luaran) sahaja
+if (!isset($_SESSION['user_id']) && empty($allow_public_engine_form)) {
+    header("Location: index.php");
+    exit();
 }
 
 // 2. PREVENT BROWSER CACHING
@@ -432,7 +433,7 @@ if ($current_user) {
         <!-- Profile -->
         <?php 
             $profil_pic = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
-            if (!empty($_SESSION['gambar'])) { $profil_pic = "uploads/" . $_SESSION['gambar']; }
+            if (!empty($_SESSION['gambar'])) { $profil_pic = "uploads/profile/" . $_SESSION['gambar']; }
         ?>
         <div style="text-align: center; margin-bottom: 15px;">
             <div style="width: 70px; height: 70px; margin: 0 auto; border-radius: 50%; border: 3px solid white; overflow: hidden; background-color: #f0f0f0; flex-shrink: 0;">
@@ -458,6 +459,11 @@ if ($current_user) {
 
     <!-- Menu -->
     <div class="py-2">
+        <!-- No-Code Builder Hub -->
+        <a href="nocode_hub.php" class="nav-item <?php echo in_array(basename($_SERVER['PHP_SELF']), ['nocode_hub.php','wizard.php','builder.php','workflow_builder.php'])?'active':''; ?>" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600;">
+            <i class="fas fa-magic"></i> No-Code Builder
+        </a>
+        
         <!-- Dashboard Aplikasi -->
         <a href="dashboard_aplikasi.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='dashboard_aplikasi.php'?'active':''; ?>">
             <i class="fas fa-chart-line"></i> Dashboard Aplikasi
@@ -486,6 +492,9 @@ if ($current_user) {
         <?php endif; ?>
             </div>
         </div>
+        <a href="builder.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='builder.php'?'active':''; ?>">
+            <i class="fas fa-tools"></i> No-Code Builder
+        </a>
         <a href="manual.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='manual.php'?'active':''; ?>">
             <i class="fas fa-book-open"></i> Manual Pengguna
         </a>

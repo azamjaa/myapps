@@ -4,6 +4,9 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /myapps/
+
+    # No-Code Builder: /myapps/apps/nama-app -> engine.php?app_slug=nama-app
+    RewriteRule ^apps/([a-zA-Z0-9_-]+)/?$ engine.php?app_slug=$1 [L,QSA]
 </IfModule>
 
 # Pass Authorization header to PHP (SSO/OAuth2)

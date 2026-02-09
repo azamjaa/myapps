@@ -90,12 +90,26 @@ include 'header.php';
 // Get kategori list for modal
 $kategoriList = $db->query("SELECT id_kategori, nama_kategori FROM kategori WHERE aktif = 1 ORDER BY nama_kategori")->fetchAll(PDO::FETCH_ASSOC);
 
-// Statistik Aplikasi
-$cntAplikasi = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1")->fetchColumn();
-$cntDalaman = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 1")->fetchColumn();
-$cntLuaran = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 2")->fetchColumn();
-$cntGunasama = $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 3")->fetchColumn();
-$chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_aplikasi) as total FROM aplikasi a JOIN kategori k ON a.id_kategori = k.id_kategori WHERE a.status = 1 GROUP BY a.id_kategori, k.nama_kategori ORDER BY a.id_kategori ASC")->fetchAll(PDO::FETCH_ASSOC);
+// Statistik Aplikasi (gabungan aplikasi + custom_apps)
+try {
+    $cntAplikasi = (int) $db->query("SELECT (SELECT COUNT(*) FROM aplikasi WHERE status = 1) + (SELECT COUNT(*) FROM custom_apps WHERE id_kategori IN (1,2,3)) AS total")->fetchColumn();
+    $cntDalaman = (int) $db->query("SELECT (SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 1) + (SELECT COUNT(*) FROM custom_apps WHERE id_kategori = 1) AS total")->fetchColumn();
+    $cntLuaran = (int) $db->query("SELECT (SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 2) + (SELECT COUNT(*) FROM custom_apps WHERE id_kategori = 2) AS total")->fetchColumn();
+    $cntGunasama = (int) $db->query("SELECT (SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 3) + (SELECT COUNT(*) FROM custom_apps WHERE id_kategori = 3) AS total")->fetchColumn();
+    $chartKategori = $db->query("
+        SELECT id_kategori, nama_kategori, SUM(total) AS total FROM (
+            SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_aplikasi) AS total FROM aplikasi a JOIN kategori k ON a.id_kategori = k.id_kategori WHERE a.status = 1 GROUP BY a.id_kategori, k.nama_kategori
+            UNION ALL
+            SELECT c.id_kategori, k.nama_kategori, COUNT(*) AS total FROM custom_apps c JOIN kategori k ON c.id_kategori = k.id_kategori WHERE c.id_kategori IN (1,2,3) GROUP BY c.id_kategori, k.nama_kategori
+        ) AS u GROUP BY id_kategori, nama_kategori ORDER BY id_kategori ASC
+    ")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    $cntAplikasi = (int) $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1")->fetchColumn();
+    $cntDalaman = (int) $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 1")->fetchColumn();
+    $cntLuaran = (int) $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 2")->fetchColumn();
+    $cntGunasama = (int) $db->query("SELECT COUNT(*) FROM aplikasi WHERE status = 1 AND id_kategori = 3")->fetchColumn();
+    $chartKategori = $db->query("SELECT k.id_kategori, k.nama_kategori, COUNT(a.id_aplikasi) as total FROM aplikasi a JOIN kategori k ON a.id_kategori = k.id_kategori WHERE a.status = 1 GROUP BY a.id_kategori, k.nama_kategori ORDER BY a.id_kategori ASC")->fetchAll(PDO::FETCH_ASSOC);
+}
 
 // Data untuk Direktori Aplikasi List View
 $direktori_search = $_GET['direktori_search'] ?? '';
@@ -110,16 +124,20 @@ if (!in_array($direktori_sort, $allowed_sort)) { $direktori_sort = 'id_kategori'
 $direktori_items_per_page = 20;
 $direktori_offset = ($direktori_page - 1) * $direktori_items_per_page;
 
-// Query count untuk direktori
-$direktori_sqlCount = "SELECT COUNT(*) as total FROM aplikasi a 
-                       LEFT JOIN kategori k ON a.id_kategori = k.id_kategori 
-                       WHERE a.status = 1";
+// SQL UNION ALL: gabung jadual aplikasi dan custom_apps. Pautan no-code = /myapps/apps/[app_slug]
+$direktori_union = "(SELECT a.id_aplikasi, a.nama_aplikasi, a.id_kategori, k.nama_kategori, a.keterangan, a.url, a.sso_comply, a.status, 0 AS is_nocode
+                    FROM aplikasi a LEFT JOIN kategori k ON a.id_kategori = k.id_kategori WHERE a.status = 1)
+                  UNION ALL
+                  (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, k.nama_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, 0 AS sso_comply, 1 AS status, 1 AS is_nocode
+                    FROM custom_apps c LEFT JOIN kategori k ON c.id_kategori = k.id_kategori WHERE c.id_kategori IN (1, 2, 3))";
 
+// Query count untuk direktori (gabungan aplikasi + custom_apps)
+$direktori_sqlCount = "SELECT COUNT(*) AS total FROM ($direktori_union) AS combined WHERE 1=1";
 if (!empty($direktori_kategori)) {
-    $direktori_sqlCount .= " AND a.id_kategori = " . intval($direktori_kategori);
+    $direktori_sqlCount .= " AND combined.id_kategori = " . intval($direktori_kategori);
 }
 if (!empty($direktori_search)) {
-    $direktori_sqlCount .= " AND (a.nama_aplikasi LIKE ? OR a.keterangan LIKE ? OR k.nama_kategori LIKE ?)";
+    $direktori_sqlCount .= " AND (combined.nama_aplikasi LIKE ? OR combined.keterangan LIKE ? OR combined.nama_kategori LIKE ?)";
 }
 
 $direktori_stmt = $db->prepare($direktori_sqlCount);
@@ -129,34 +147,28 @@ if (!empty($direktori_search)) {
 } else {
     $direktori_stmt->execute();
 }
-$direktori_total_records = $direktori_stmt->fetch()['total'];
-$direktori_total_pages = ceil($direktori_total_records / $direktori_items_per_page);
+$direktori_total_records = (int) $direktori_stmt->fetch()['total'];
+$direktori_total_pages = ceil($direktori_total_records / $direktori_items_per_page) ?: 1;
 
 if ($direktori_page > $direktori_total_pages && $direktori_total_pages > 0) {
     $direktori_page = $direktori_total_pages;
     $direktori_offset = ($direktori_page - 1) * $direktori_items_per_page;
 }
 
-// Query aplikasi untuk direktori
-$direktori_sql = "SELECT a.*, k.nama_kategori
-                  FROM aplikasi a 
-                  LEFT JOIN kategori k ON a.id_kategori = k.id_kategori 
-                  WHERE a.status = 1";
-
+// Query aplikasi + custom_apps untuk direktori
+$direktori_sql = "SELECT * FROM ($direktori_union) AS combined WHERE 1=1";
 if (!empty($direktori_kategori)) {
-    $direktori_sql .= " AND a.id_kategori = " . intval($direktori_kategori);
+    $direktori_sql .= " AND combined.id_kategori = " . intval($direktori_kategori);
 }
 if (!empty($direktori_search)) {
-    $direktori_sql .= " AND (a.nama_aplikasi LIKE ? OR a.keterangan LIKE ? OR k.nama_kategori LIKE ?)";
+    $direktori_sql .= " AND (combined.nama_aplikasi LIKE ? OR combined.keterangan LIKE ? OR combined.nama_kategori LIKE ?)";
 }
-
-// Handle sorting
 if ($direktori_sort === 'kategori') {
-    $direktori_sql .= " ORDER BY k.nama_kategori $direktori_order, a.id_aplikasi ASC";
+    $direktori_sql .= " ORDER BY combined.nama_kategori $direktori_order, combined.nama_aplikasi ASC";
 } elseif ($direktori_sort === 'id_kategori') {
-    $direktori_sql .= " ORDER BY a.id_kategori $direktori_order, a.id_aplikasi ASC";
+    $direktori_sql .= " ORDER BY combined.id_kategori $direktori_order, combined.nama_aplikasi ASC";
 } else {
-    $direktori_sql .= " ORDER BY $direktori_sort $direktori_order";
+    $direktori_sql .= " ORDER BY combined.$direktori_sort $direktori_order";
 }
 $direktori_sql .= " LIMIT $direktori_items_per_page OFFSET $direktori_offset";
 
@@ -167,13 +179,21 @@ if (!empty($direktori_search)) {
 } else {
     $direktori_stmt->execute();
 }
-$direktori_data = $direktori_stmt->fetchAll();
+$direktori_data = $direktori_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Get kategori list untuk direktori
 $direktori_kategoriList = $db->query("SELECT id_kategori, nama_kategori FROM kategori WHERE aktif = 1 ORDER BY id_kategori ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-// Count by kategori untuk direktori
-$direktori_allApps = $db->query("SELECT id_kategori, COUNT(*) as total FROM aplikasi WHERE status = 1 GROUP BY id_kategori")->fetchAll(PDO::FETCH_KEY_PAIR);
+// Count by kategori untuk direktori (aplikasi + custom_apps)
+$direktori_allApps = [];
+try {
+    $cntStmt = $db->query("SELECT id_kategori, COUNT(*) AS total FROM (SELECT id_kategori FROM aplikasi WHERE status = 1 UNION ALL SELECT id_kategori FROM custom_apps WHERE id_kategori IN (1,2,3)) AS u GROUP BY id_kategori");
+    while ($r = $cntStmt->fetch(PDO::FETCH_NUM)) {
+        $direktori_allApps[$r[0]] = (int) $r[1];
+    }
+} catch (PDOException $e) {
+    $direktori_allApps = $db->query("SELECT id_kategori, COUNT(*) as total FROM aplikasi WHERE status = 1 GROUP BY id_kategori")->fetchAll(PDO::FETCH_KEY_PAIR);
+}
 
 // Function untuk sort link dalam direktori
 function direktoriSortLink($col, $currentSort, $currentOrder, $currentSearch, $currentKat) {
@@ -367,10 +387,26 @@ if (!$lastUpdated) {
         <div class="tab-pane fade" id="semua" role="tabpanel">
     
     <?php
-    // Get all applications grouped by category
-    $aplikasiDalaman = $db->query("SELECT * FROM aplikasi WHERE status = 1 AND id_kategori = 1 ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);
-    $aplikasiLuaran = $db->query("SELECT * FROM aplikasi WHERE status = 1 AND id_kategori = 2 ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);
-    $aplikasiGunasama = $db->query("SELECT * FROM aplikasi WHERE status = 1 AND id_kategori = 3 ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);
+    // Paparan direktori aplikasi: UNION ALL aplikasi + custom_apps. Pautan no-code = /myapps/apps/[app_slug]
+    // id_kategori: 1=Dalaman, 2=Luaran, 3=Gunasama — aplikasi muncul di tab yang betul
+    $unionDalaman = "(SELECT a.id_aplikasi, a.nama_aplikasi, a.id_kategori, a.keterangan, a.url, a.sso_comply, 0 AS is_nocode FROM aplikasi a WHERE a.status = 1 AND a.id_kategori = 1)
+                     UNION ALL
+                     (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, 0 AS sso_comply, 1 AS is_nocode FROM custom_apps c WHERE c.id_kategori = 1)";
+    $unionLuaran  = "(SELECT a.id_aplikasi, a.nama_aplikasi, a.id_kategori, a.keterangan, a.url, a.sso_comply, 0 AS is_nocode FROM aplikasi a WHERE a.status = 1 AND a.id_kategori = 2)
+                     UNION ALL
+                     (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, 0 AS sso_comply, 1 AS is_nocode FROM custom_apps c WHERE c.id_kategori = 2)";
+    $unionGunasama= "(SELECT a.id_aplikasi, a.nama_aplikasi, a.id_kategori, a.keterangan, a.url, a.sso_comply, 0 AS is_nocode FROM aplikasi a WHERE a.status = 1 AND a.id_kategori = 3)
+                     UNION ALL
+                     (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, 0 AS sso_comply, 1 AS is_nocode FROM custom_apps c WHERE c.id_kategori = 3)";
+    try {
+        $aplikasiDalaman = $db->query("SELECT * FROM ($unionDalaman) AS u ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $aplikasiLuaran  = $db->query("SELECT * FROM ($unionLuaran) AS u ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $aplikasiGunasama= $db->query("SELECT * FROM ($unionGunasama) AS u ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);
+    } catch (PDOException $e) {
+        $aplikasiDalaman = $db->query("SELECT id_aplikasi, nama_aplikasi, id_kategori, keterangan, url, sso_comply, 0 AS is_nocode FROM aplikasi WHERE status = 1 AND id_kategori = 1 ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $aplikasiLuaran  = $db->query("SELECT id_aplikasi, nama_aplikasi, id_kategori, keterangan, url, sso_comply, 0 AS is_nocode FROM aplikasi WHERE status = 1 AND id_kategori = 2 ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $aplikasiGunasama= $db->query("SELECT id_aplikasi, nama_aplikasi, id_kategori, keterangan, url, sso_comply, 0 AS is_nocode FROM aplikasi WHERE status = 1 AND id_kategori = 3 ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);
+    }
     
     // Icon mapping based on application name - UNIQUE & ATTRACTIVE for each app
     function getAppIcon($nama_aplikasi, $keterangan = '') {
@@ -750,7 +786,13 @@ if (!$lastUpdated) {
     }
     ?>
 
-    <!-- APLIKASI DALAMAN -->
+    <!-- Pengenalan: senarai gabungan aplikasi jabatan + no-code, dipisahkan mengikut kategori -->
+    <div class="alert alert-light border mb-4 py-2 small">
+        <i class="fas fa-info-circle me-2 text-primary"></i>
+        Senarai ini menggabungkan <strong>aplikasi jabatan</strong> (jadual <code>aplikasi</code>) dan <strong>aplikasi no-code</strong> (jadual <code>custom_apps</code>). Aplikasi no-code menggunakan pautan <code>/myapps/apps/[app_slug]</code>. Dipisahkan mengikut kategori: <strong>Dalaman</strong>, <strong>Luaran</strong>, <strong>Gunasama</strong>.
+    </div>
+
+    <!-- APLIKASI DALAMAN (id_kategori = 1) -->
     <div class="mb-5">
         <h4 class="mb-3 fw-bold text-dark">
             <i class="fas fa-cube me-2" style="color: #FFD700;"></i>Aplikasi Dalaman
@@ -765,7 +807,7 @@ if (!$lastUpdated) {
                     $appColors = getAppColor($app['nama_aplikasi'], 1);
                 ?>
                     <div class="col-md-2 col-sm-4 col-6">
-                        <a href="<?php echo htmlspecialchars($app['url']); ?>" target="_blank" class="text-decoration-none">
+                        <a href="<?php echo htmlspecialchars($app['url']); ?>"<?php if (!empty($app['is_nocode'])): ?> class="text-decoration-none"<?php else: ?> target="_blank" class="text-decoration-none"<?php endif; ?>>
                             <div class="card border-0 shadow-sm h-100 app-card" style="border-left: 3px solid <?php echo $appColors[0]; ?> !important; transition: all 0.3s ease;">
                                 <div class="card-body text-center p-3">
                                     <div class="mb-2">
@@ -791,7 +833,7 @@ if (!$lastUpdated) {
     </div>
 </div>
 
-    <!-- APLIKASI LUARAN -->
+    <!-- APLIKASI LUARAN (id_kategori = 2) -->
     <div class="mb-5">
         <h4 class="mb-3 fw-bold text-dark">
             <i class="fas fa-globe me-2" style="color: #FF4444;"></i>Aplikasi Luaran
@@ -806,7 +848,7 @@ if (!$lastUpdated) {
                     $appColors = getAppColor($app['nama_aplikasi'], 2);
                 ?>
                     <div class="col-md-2 col-sm-4 col-6">
-                        <a href="<?php echo htmlspecialchars($app['url']); ?>" target="_blank" class="text-decoration-none">
+                        <a href="<?php echo htmlspecialchars($app['url']); ?>"<?php if (!empty($app['is_nocode'])): ?> class="text-decoration-none"<?php else: ?> target="_blank" class="text-decoration-none"<?php endif; ?>>
                             <div class="card border-0 shadow-sm h-100 app-card" style="border-left: 3px solid <?php echo $appColors[0]; ?> !important; transition: all 0.3s ease;">
                                 <div class="card-body text-center p-3">
                                     <div class="mb-2">
@@ -832,7 +874,7 @@ if (!$lastUpdated) {
         </div>
     </div>
 
-    <!-- APLIKASI GUNASAMA -->
+    <!-- APLIKASI GUNASAMA (id_kategori = 3) -->
     <div class="mb-5">
         <h4 class="mb-3 fw-bold text-dark">
             <i class="fas fa-share-alt me-2" style="color: #4169E1;"></i>Aplikasi Gunasama
@@ -847,7 +889,7 @@ if (!$lastUpdated) {
                     $appColors = getAppColor($app['nama_aplikasi'], 3);
                 ?>
                     <div class="col-md-2 col-sm-4 col-6">
-                        <a href="<?php echo htmlspecialchars($app['url']); ?>" target="_blank" class="text-decoration-none">
+                        <a href="<?php echo htmlspecialchars($app['url']); ?>"<?php if (!empty($app['is_nocode'])): ?> class="text-decoration-none"<?php else: ?> target="_blank" class="text-decoration-none"<?php endif; ?>>
                             <div class="card border-0 shadow-sm h-100 app-card" style="border-left: 3px solid <?php echo $appColors[0]; ?> !important; transition: all 0.3s ease;">
                                 <div class="card-body text-center p-3">
                                     <div class="mb-2">
@@ -888,7 +930,7 @@ if (!$lastUpdated) {
                             $appColors = getAppColor($app['nama_aplikasi'], 1);
                         ?>
                             <div class="col-md-2 col-sm-4 col-6">
-                                <a href="<?php echo htmlspecialchars($app['url']); ?>" target="_blank" class="text-decoration-none">
+                                <a href="<?php echo htmlspecialchars($app['url']); ?>"<?php if (!empty($app['is_nocode'])): ?> class="text-decoration-none"<?php else: ?> target="_blank" class="text-decoration-none"<?php endif; ?>>
                                     <div class="card border-0 shadow-sm h-100 app-card" style="border-left: 3px solid <?php echo $appColors[0]; ?> !important; transition: all 0.3s ease;">
                                         <div class="card-body text-center p-3">
                                             <div class="mb-2">
@@ -928,7 +970,7 @@ if (!$lastUpdated) {
                             $appColors = getAppColor($app['nama_aplikasi'], 2);
                         ?>
                             <div class="col-md-2 col-sm-4 col-6">
-                                <a href="<?php echo htmlspecialchars($app['url']); ?>" target="_blank" class="text-decoration-none">
+                                <a href="<?php echo htmlspecialchars($app['url']); ?>"<?php if (!empty($app['is_nocode'])): ?> class="text-decoration-none"<?php else: ?> target="_blank" class="text-decoration-none"<?php endif; ?>>
                                     <div class="card border-0 shadow-sm h-100 app-card" style="border-left: 3px solid <?php echo $appColors[0]; ?> !important; transition: all 0.3s ease;">
                                         <div class="card-body text-center p-3">
                                             <div class="mb-2">
@@ -968,7 +1010,7 @@ if (!$lastUpdated) {
                             $appColors = getAppColor($app['nama_aplikasi'], 3);
                         ?>
                             <div class="col-md-2 col-sm-4 col-6">
-                                <a href="<?php echo htmlspecialchars($app['url']); ?>" target="_blank" class="text-decoration-none">
+                                <a href="<?php echo htmlspecialchars($app['url']); ?>"<?php if (!empty($app['is_nocode'])): ?> class="text-decoration-none"<?php else: ?> target="_blank" class="text-decoration-none"<?php endif; ?>>
                                     <div class="card border-0 shadow-sm h-100 app-card" style="border-left: 3px solid <?php echo $appColors[0]; ?> !important; transition: all 0.3s ease;">
                                         <div class="card-body text-center p-3">
                                             <div class="mb-2">
@@ -1098,7 +1140,7 @@ if (!$lastUpdated) {
                                                 <?php echo $bil++; ?>
                                             </td>
                                             <td>
-                                                <a href="<?php echo htmlspecialchars($row['url']); ?>" target="_blank" class="nama-link" style="color: #0d6efd; font-weight: 600; text-decoration: none;">
+                                                <a href="<?php echo htmlspecialchars($row['url']); ?>"<?php echo !empty($row['is_nocode']) ? '' : ' target="_blank"'; ?> class="nama-link" style="color: #0d6efd; font-weight: 600; text-decoration: none;">
                                                     <?php echo htmlspecialchars($row['nama_aplikasi']); ?>
                                                 </a>
                                             </td>
@@ -1124,13 +1166,17 @@ if (!$lastUpdated) {
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-center px-3">
-                                                <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_application')): ?>
-                                                    <button type="button" class="btn btn-sm btn-warning" onclick="openAplikasiEditModal(<?php echo $row['id_aplikasi']; ?>, '<?php echo htmlspecialchars(addslashes($row['nama_aplikasi'])); ?>', <?php echo $row['id_kategori']; ?>, '<?php echo htmlspecialchars(addslashes($row['keterangan'] ?? '')); ?>', '<?php echo htmlspecialchars(addslashes($row['url'] ?? '')); ?>', <?php echo $row['sso_comply'] ?? 0; ?>, <?php echo $row['status'] ?? 1; ?>)" title="Edit"><i class="fas fa-edit"></i></button>
-                                                <?php endif; ?>
-                                                <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'delete_application')): ?>
-                                                    <a href="javascript:void(0);" class="btn btn-sm btn-danger" title="Padam" onclick="confirmDeleteAplikasi(<?php echo $row['id_aplikasi']; ?>, '<?php echo htmlspecialchars(addslashes($row['nama_aplikasi'])); ?>')">
-                                                        <i class="fas fa-trash"></i>
-                                                    </a>
+                                                <?php if (!empty($row['is_nocode'])): ?>
+                                                    <a href="<?php echo htmlspecialchars($row['url']); ?>" class="btn btn-sm btn-outline-primary" title="Buka borang"><i class="fas fa-external-link-alt"></i></a>
+                                                <?php else: ?>
+                                                    <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'edit_application')): ?>
+                                                        <button type="button" class="btn btn-sm btn-warning" onclick="openAplikasiEditModal(<?php echo (int)$row['id_aplikasi']; ?>, '<?php echo htmlspecialchars(addslashes($row['nama_aplikasi'])); ?>', <?php echo (int)$row['id_kategori']; ?>, '<?php echo htmlspecialchars(addslashes($row['keterangan'] ?? '')); ?>', '<?php echo htmlspecialchars(addslashes($row['url'] ?? '')); ?>', <?php echo (int)($row['sso_comply'] ?? 0); ?>, <?php echo (int)($row['status'] ?? 1); ?>)" title="Edit"><i class="fas fa-edit"></i></button>
+                                                    <?php endif; ?>
+                                                    <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'delete_application')): ?>
+                                                        <a href="javascript:void(0);" class="btn btn-sm btn-danger" title="Padam" onclick="confirmDeleteAplikasi(<?php echo (int)$row['id_aplikasi']; ?>, '<?php echo htmlspecialchars(addslashes($row['nama_aplikasi'])); ?>')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </a>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                             </td>
                                         </tr>

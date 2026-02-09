@@ -138,7 +138,7 @@ try {
         $telefon = $row['telefon'] ?? '-';
         $nama = $row['nama'] ?? 'Nama Tidak Diketahui';
         // Handle gambar - jika ada, tambah path uploads/, jika tiada, kosongkan
-        $gambar = !empty($row['gambar']) ? 'uploads/' . $row['gambar'] : '';
+        $gambar = !empty($row['gambar']) ? 'uploads/profile/' . $row['gambar'] : '';
     
         // Add birthday for all years
         for ($year = $year_range_start; $year <= $year_range_end; $year++) {
@@ -1731,7 +1731,7 @@ function updateStafDisplay() {
                data-emel="${(row.emel || '').replace(/"/g, '&quot;')}"
                data-telefon="${(row.telefon || '').replace(/"/g, '&quot;')}"
                data-status="${row.id_status_staf || ''}"
-               data-foto="${(row.gambar ? 'uploads/' + row.gambar : '').replace(/"/g, '&quot;')}"
+               data-foto="${(row.gambar ? 'uploads/profile/' + row.gambar : '').replace(/"/g, '&quot;')}"
             >
                 ${(row.nama || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
             </a>
@@ -3104,7 +3104,7 @@ function populateEditForm(staf) {
     
     // Set gambar preview
     if (staf.gambar) {
-        document.getElementById('stafFormPhotoPreview').src = 'uploads/' + staf.gambar;
+        document.getElementById('stafFormPhotoPreview').src = 'uploads/profile/' + staf.gambar;
     } else {
         document.getElementById('stafFormPhotoPreview').src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
     }
