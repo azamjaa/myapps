@@ -128,7 +128,7 @@ $direktori_offset = ($direktori_page - 1) * $direktori_items_per_page;
 $direktori_union = "(SELECT a.id_aplikasi, a.nama_aplikasi, a.id_kategori, k.nama_kategori, a.keterangan, a.url, a.sso_comply, a.status, 0 AS is_nocode
                     FROM aplikasi a LEFT JOIN kategori k ON a.id_kategori = k.id_kategori WHERE a.status = 1)
                   UNION ALL
-                  (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, k.nama_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, 0 AS sso_comply, 1 AS status, 1 AS is_nocode
+                  (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, k.nama_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, COALESCE(c.sso_ready, 1) AS sso_comply, 1 AS status, 1 AS is_nocode
                     FROM custom_apps c LEFT JOIN kategori k ON c.id_kategori = k.id_kategori WHERE c.id_kategori IN (1, 2, 3))";
 
 // Query count untuk direktori (gabungan aplikasi + custom_apps)
@@ -391,13 +391,13 @@ if (!$lastUpdated) {
     // id_kategori: 1=Dalaman, 2=Luaran, 3=Gunasama — aplikasi muncul di tab yang betul
     $unionDalaman = "(SELECT a.id_aplikasi, a.nama_aplikasi, a.id_kategori, a.keterangan, a.url, a.sso_comply, 0 AS is_nocode FROM aplikasi a WHERE a.status = 1 AND a.id_kategori = 1)
                      UNION ALL
-                     (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, 0 AS sso_comply, 1 AS is_nocode FROM custom_apps c WHERE c.id_kategori = 1)";
+                     (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, COALESCE(c.sso_ready, 1) AS sso_comply, 1 AS is_nocode FROM custom_apps c WHERE c.id_kategori = 1)";
     $unionLuaran  = "(SELECT a.id_aplikasi, a.nama_aplikasi, a.id_kategori, a.keterangan, a.url, a.sso_comply, 0 AS is_nocode FROM aplikasi a WHERE a.status = 1 AND a.id_kategori = 2)
                      UNION ALL
-                     (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, 0 AS sso_comply, 1 AS is_nocode FROM custom_apps c WHERE c.id_kategori = 2)";
+                     (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, COALESCE(c.sso_ready, 1) AS sso_comply, 1 AS is_nocode FROM custom_apps c WHERE c.id_kategori = 2)";
     $unionGunasama= "(SELECT a.id_aplikasi, a.nama_aplikasi, a.id_kategori, a.keterangan, a.url, a.sso_comply, 0 AS is_nocode FROM aplikasi a WHERE a.status = 1 AND a.id_kategori = 3)
                      UNION ALL
-                     (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, 0 AS sso_comply, 1 AS is_nocode FROM custom_apps c WHERE c.id_kategori = 3)";
+                     (SELECT NULL AS id_aplikasi, c.app_name AS nama_aplikasi, c.id_kategori, 'Borang No-Code' AS keterangan, CONCAT('/myapps/apps/', c.app_slug) AS url, COALESCE(c.sso_ready, 1) AS sso_comply, 1 AS is_nocode FROM custom_apps c WHERE c.id_kategori = 3)";
     try {
         $aplikasiDalaman = $db->query("SELECT * FROM ($unionDalaman) AS u ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);
         $aplikasiLuaran  = $db->query("SELECT * FROM ($unionLuaran) AS u ORDER BY nama_aplikasi ASC")->fetchAll(PDO::FETCH_ASSOC);

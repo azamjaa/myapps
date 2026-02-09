@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS `custom_apps` (
   `metadata` TEXT DEFAULT NULL COMMENT 'JSON: fields, pages, workflows, dashboard_cards, settings',
   `id_user_owner` INT(11) DEFAULT NULL,
   `id_kategori` INT(11) DEFAULT NULL COMMENT '1=Dalaman, 2=Luaran, 3=Gunasama',
+  `sso_ready` TINYINT(1) DEFAULT 1 COMMENT 'SSO Ready status: 1=Yes (default for no-code apps), 0=No',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

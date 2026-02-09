@@ -71,8 +71,9 @@ try {
         exit;
     }
 
-    // Simpan ke custom_apps. Kolum: app_slug, app_name, metadata, id_user_owner, id_kategori
-    $ins = $pdo->prepare("INSERT INTO custom_apps (app_slug, app_name, metadata, id_user_owner, id_kategori) VALUES (?, ?, ?, ?, ?)");
+    // Simpan ke custom_apps. Kolum: app_slug, app_name, metadata, id_user_owner, id_kategori, sso_ready
+    // No-code apps are SSO Ready by default (sso_ready = 1)
+    $ins = $pdo->prepare("INSERT INTO custom_apps (app_slug, app_name, metadata, id_user_owner, id_kategori, sso_ready) VALUES (?, ?, ?, ?, ?, 1)");
     $ins->execute([$url_slug, $nama_aplikasi, $metadata_json, $id_user_owner, $id_kategori]);
 
     $out['success'] = true;
