@@ -490,11 +490,7 @@ if ($current_user) {
             <i class="fas fa-file-alt"></i> Pengurusan Rekod Dashboard
         </a>
         <?php endif; ?>
-            </div>
-        </div>
-        <a href="builder.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='builder.php'?'active':''; ?>">
-            <i class="fas fa-tools"></i> No-Code Builder
-        </a>
+        
         <a href="manual.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='manual.php'?'active':''; ?>">
             <i class="fas fa-book-open"></i> Manual Pengguna
         </a>
