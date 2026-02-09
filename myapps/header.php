@@ -459,11 +459,6 @@ if ($current_user) {
 
     <!-- Menu -->
     <div class="py-2">
-        <!-- No-Code Builder Hub -->
-        <a href="nocode_hub.php" class="nav-item <?php echo in_array(basename($_SERVER['PHP_SELF']), ['nocode_hub.php','wizard.php','builder.php','workflow_builder.php'])?'active':''; ?>" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600;">
-            <i class="fas fa-magic"></i> No-Code Builder
-        </a>
-        
         <!-- Dashboard Aplikasi -->
         <a href="dashboard_aplikasi.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='dashboard_aplikasi.php'?'active':''; ?>">
             <i class="fas fa-chart-line"></i> Dashboard Aplikasi
@@ -490,6 +485,11 @@ if ($current_user) {
             <i class="fas fa-file-alt"></i> Pengurusan Rekod Dashboard
         </a>
         <?php endif; ?>
+        
+        <!-- No-Code Builder Hub -->
+        <a href="nocode_hub.php" class="nav-item <?php echo in_array(basename($_SERVER['PHP_SELF']), ['nocode_hub.php','wizard.php','builder.php','workflow_builder.php'])?'active':''; ?>" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600;">
+            <i class="fas fa-magic"></i> No-Code Builder
+        </a>
         
         <a href="manual.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='manual.php'?'active':''; ?>">
             <i class="fas fa-book-open"></i> Manual Pengguna
