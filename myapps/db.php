@@ -96,6 +96,14 @@ $user = $config['database']['username'];
 $pass = $config['database']['password']; 
 $dbname = $config['database']['database']; 
 
+// SSO/JWT constants (untuk index login & DIY Aplikasi)
+if (!defined('APP_URL')) {
+    define('APP_URL', $config['app']['url'] ?? 'http://localhost');
+}
+if (!defined('JWT_SECRET_KEY')) {
+    define('JWT_SECRET_KEY', getenv('JWT_SECRET_KEY') ?: getenv('APP_KEY') ?: 'myapps-keda-jwt-secret-key');
+}
+
 try {
     $db = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

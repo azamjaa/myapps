@@ -138,7 +138,7 @@ try {
         $telefon = $row['telefon'] ?? '-';
         $nama = $row['nama'] ?? 'Nama Tidak Diketahui';
         // Handle gambar - jika ada, tambah path uploads/, jika tiada, kosongkan
-        $gambar = !empty($row['gambar']) ? 'uploads/profile/' . $row['gambar'] : '';
+        $gambar = !empty($row['gambar']) ? 'uploads/' . $row['gambar'] : '';
     
         // Add birthday for all years
         for ($year = $year_range_start; $year <= $year_range_end; $year++) {
@@ -734,7 +734,7 @@ if (!$lastUpdated) {
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title fw-bold" id="stafAddEditModalLabel">
-                        <i class="fas fa-user-edit me-2"></i><span id="stafModalTitle">Tambah Staf</span>
+                        <i class="fas fa-user-edit me-2"></i><span id="stafModalTitle">Tambah Rekod</span>
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -963,7 +963,7 @@ if (!$lastUpdated) {
                                 <div class="col-md-3 col-lg-2 d-flex align-items-end">
                                     <?php if(hasAccess($pdo, $_SESSION['user_id'], 1, 'create_user')): ?>
                                         <button type="button" class="btn btn-sm btn-primary w-100" onclick="openStafAddModal()">
-                                            <i class="fas fa-plus me-1"></i>Tambah Staf
+                                            <i class="fas fa-plus me-1"></i>Tambah Rekod
                                         </button>
                                     <?php endif; ?>
                                 </div>
@@ -1731,7 +1731,7 @@ function updateStafDisplay() {
                data-emel="${(row.emel || '').replace(/"/g, '&quot;')}"
                data-telefon="${(row.telefon || '').replace(/"/g, '&quot;')}"
                data-status="${row.id_status_staf || ''}"
-               data-foto="${(row.gambar ? 'uploads/profile/' + row.gambar : '').replace(/"/g, '&quot;')}"
+               data-foto="${(row.gambar ? 'uploads/' + row.gambar : '').replace(/"/g, '&quot;')}"
             >
                 ${(row.nama || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
             </a>
@@ -3038,7 +3038,7 @@ function openStafAddModal() {
     document.getElementById('stafAddEditForm').reset();
     document.getElementById('stafFormIdUser').value = '';
     document.getElementById('stafFormMode').value = 'add';
-    document.getElementById('stafModalTitle').textContent = 'Tambah Staf';
+    document.getElementById('stafModalTitle').textContent = 'Tambah Rekod';
     document.getElementById('stafFormPhotoPreview').src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
     
     // Show modal
@@ -3104,7 +3104,7 @@ function populateEditForm(staf) {
     
     // Set gambar preview
     if (staf.gambar) {
-        document.getElementById('stafFormPhotoPreview').src = 'uploads/profile/' + staf.gambar;
+        document.getElementById('stafFormPhotoPreview').src = 'uploads/' + staf.gambar;
     } else {
         document.getElementById('stafFormPhotoPreview').src = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
     }

@@ -1575,8 +1575,8 @@ include 'header.php';
                 <div class="card-body d-flex flex-column">
                     <form method="GET" id="downloadForm" class="d-flex flex-column flex-grow-1">
                         <!-- Step 1: Category Selection (Required) -->
-                        <div class="card mb-3 border-warning">
-                            <div class="card-header bg-warning text-white py-2">
+                        <div class="card mb-3 border-success">
+                            <div class="card-header bg-success text-white py-2">
                                 <h6 class="mb-0 text-white">
                                     <i class="fas fa-tags me-2 text-white"></i>Langkah 1 : Pilih Nama Dashboard <span class="text-white">*</span>
                                 </h6>
@@ -1604,7 +1604,7 @@ include 'header.php';
                         
                         <!-- Step 2: Format Selection -->
                         <div class="card mb-3">
-                            <div class="card-header bg-info text-white py-2">
+                            <div class="card-header bg-success text-white py-2">
                                 <h6 class="mb-0 text-white">
                                     <i class="fas fa-file me-2 text-white"></i>Langkah 2 : Pilih Jenis File
                                 </h6>
@@ -1704,8 +1704,8 @@ include 'header.php';
                     
                     <form method="POST" enctype="multipart/form-data" id="unifiedUploadForm" class="d-flex flex-column flex-grow-1">
                                 <!-- Step 1: Category Selection (Required) -->
-                                <div class="card mb-3" style="border: 1px solid #cbd5e1;">
-                                    <div class="card-header bg-warning text-white py-2">
+                                <div class="card mb-3 border-primary">
+                                    <div class="card-header bg-primary text-white py-2">
                                         <h6 class="mb-0 text-white">
                                             <i class="fas fa-tags me-2 text-white"></i>Langkah 1 : Pilih Nama Dashboard <span class="text-white">*</span>
                                         </h6>
@@ -1734,7 +1734,7 @@ include 'header.php';
                                 
                                 <!-- Step 2: File Selection -->
                                 <div class="card mb-3">
-                                    <div class="card-header bg-info text-white py-2">
+                                    <div class="card-header bg-primary text-white py-2">
                                         <h6 class="mb-0 text-white">
                                             <i class="fas fa-file me-2 text-white"></i>Langkah 2 : Pilih Jenis File
                                         </h6>

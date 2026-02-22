@@ -265,7 +265,7 @@ if (isset($_POST['send_wish'])) {
 
 // FUNGSI UPLOAD
 function uploadGambar($file) {
-    $target_dir = "uploads/profile/";
+    $target_dir = "uploads/";
     $file_extension = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
     $new_filename = uniqid() . '.' . $file_extension;
     $target_file = $target_dir . $new_filename;
@@ -326,7 +326,7 @@ $disabledJawatan = ($currentUserRole == 'user') ? 'disabled' : '';
                         <div class="row mb-4 align-items-center">
                             <div class="col-md-3 text-center">
                                 <?php 
-                                    $img = !empty($stafData['gambar']) ? "uploads/profile/".$stafData['gambar'] : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"; 
+                                    $img = !empty($stafData['gambar']) ? "uploads/".$stafData['gambar'] : "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"; 
                                 ?>
                                 <img src="<?php echo $img; ?>" class="rounded-circle border" width="100" height="100" style="object-fit: cover;">
                             </div>

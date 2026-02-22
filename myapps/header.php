@@ -4,10 +4,9 @@ if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-// Benarkan akses tanpa login untuk Advanced Data Engine borang awam (id_kategori=2 Luaran) sahaja
-if (!isset($_SESSION['user_id']) && empty($allow_public_engine_form)) {
-    header("Location: index.php");
-    exit();
+if (!isset($_SESSION['user_id'])) { 
+    header("Location: index.php"); 
+    exit(); 
 }
 
 // 2. PREVENT BROWSER CACHING
@@ -18,6 +17,16 @@ header("Expires: 0");
 
 // 3. SAMBUNG DB
 require_once 'db.php';
+
+// Seragamkan URL aplikasi janaan no-code ke format pretty apps/slug (elak pautan nocode_app.php?app=xxx)
+if (!function_exists('normalise_app_url')) {
+    function normalise_app_url($url) {
+        if (empty($url)) return $url;
+        if (strpos($url, 'apps/') === 0) return $url;
+        if (preg_match('/[?&]app=([a-zA-Z0-9_-]+)/', $url, $m)) return 'apps/' . $m[1];
+        return $url;
+    }
+}
 
 // Pastikan Azam sudah ada session user_id
 $current_user = isset($_SESSION['id_user']) ? $_SESSION['id_user'] : null;
@@ -433,7 +442,7 @@ if ($current_user) {
         <!-- Profile -->
         <?php 
             $profil_pic = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
-            if (!empty($_SESSION['gambar'])) { $profil_pic = "uploads/profile/" . $_SESSION['gambar']; }
+            if (!empty($_SESSION['gambar'])) { $profil_pic = "uploads/" . $_SESSION['gambar']; }
         ?>
         <div style="text-align: center; margin-bottom: 15px;">
             <div style="width: 70px; height: 70px; margin: 0 auto; border-radius: 50%; border: 3px solid white; overflow: hidden; background-color: #f0f0f0; flex-shrink: 0;">
@@ -484,13 +493,12 @@ if ($current_user) {
         <a href="pengurusan_rekod_dashboard.php" class="nav-item submenu-item <?php echo basename($_SERVER['PHP_SELF'])=='pengurusan_rekod_dashboard.php'?'active':''; ?>">
             <i class="fas fa-file-alt"></i> Pengurusan Rekod Dashboard
         </a>
-        <?php endif; ?>
-        
-        <!-- No-Code Builder Hub -->
-        <a href="nocode_hub.php" class="nav-item <?php echo in_array(basename($_SERVER['PHP_SELF']), ['nocode_hub.php','wizard.php','builder.php','workflow_builder.php'])?'active':''; ?>" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600;">
-            <i class="fas fa-magic"></i> No-Code Builder
+        <a href="diyaplikasi_builder.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='diyaplikasi_builder.php'?'active':''; ?>">
+            <i class="fas fa-magic"></i> DIY Aplikasi
         </a>
-        
+        <?php endif; ?>
+            </div>
+        </div>
         <a href="manual.php" class="nav-item <?php echo basename($_SERVER['PHP_SELF'])=='manual.php'?'active':''; ?>">
             <i class="fas fa-book-open"></i> Manual Pengguna
         </a>
@@ -511,7 +519,7 @@ if ($current_user) {
         <ul class="app-list">
             <?php foreach ($sidebarApps as $app): ?>
                 <li>
-                    <a href="<?php echo htmlspecialchars($app['url']); ?>" title="<?php echo htmlspecialchars($app['nama_aplikasi']); ?>">
+                    <a href="<?php echo htmlspecialchars(normalise_app_url($app['url'])); ?>" title="<?php echo htmlspecialchars($app['nama_aplikasi']); ?>">
                         <img src="<?php echo htmlspecialchars($app['icon']); ?>" alt="<?php echo htmlspecialchars($app['nama_aplikasi']); ?>" style="width:32px;height:32px;">
                         <span><?php echo htmlspecialchars($app['nama_aplikasi']); ?></span>
                     </a>

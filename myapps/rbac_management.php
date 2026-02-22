@@ -81,7 +81,13 @@ function sortLinkRBAC($col, $currentSort, $currentOrder, $paramPrefix) {
 <!-- CONTENT AREA -->
 <div class="container-fluid">
     <!-- Header -->
-    <h3 class="mb-4 fw-bold text-dark"><i class="fas fa-user-shield fa-lg text-primary me-3"></i>Pengurusan Role Based Access Control (RBAC)</h3>
+    <h3 class="mb-2 fw-bold text-dark"><i class="fas fa-user-shield fa-lg text-primary me-3"></i>Pengurusan Role Based Access Control (RBAC)</h3>
+    
+    <div class="alert alert-info mb-4 py-3" role="alert">
+        <strong><i class="fas fa-info-circle me-2"></i>RBAC untuk semua aplikasi</strong><br>
+        Halaman ini mengurus akses <strong>MyApps</strong> dan <strong>semua aplikasi janaan DIY Aplikasi</strong> (contoh: MyDesa).
+        Dalam tab <strong>Users</strong>, apabila anda tambah/ubah role untuk user, pilih <strong>Aplikasi</strong> dalam dropdown – senarai itu termasuk aplikasi DIY Aplikasi yang telah ditambah ke direktori. Pilih aplikasi tersebut (cth. MyDesa) dan assign role; hanya user yang diberi role untuk app itu boleh akses app berkenaan. Matriks di tab "Struktur Pengurusan RBAC" menerangkan permission untuk halaman MyApps; akses ke aplikasi DIY Aplikasi dikawal melalui assign <strong>User → Role → Aplikasi</strong> di tab Users.
+    </div>
 
     <div class="card shadow-sm border-0">
         <div class="card-body">
