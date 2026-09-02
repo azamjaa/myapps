@@ -1,0 +1,65 @@
+================================================================================
+  MyApps KEDA — Panduan Deploy (Google SSO)
+================================================================================
+
+PRASYARAT
+---------
+- Akaun Google (Workspace @keda.gov.my atau peribadi Gmail/Yahoo)
+- Fail myapps.xlsx diupload sebagai Google Sheet
+- Emel Google staf MESTI sama seperti kolum emel dalam sheet Users
+
+LANGKAH 1: UPLOAD DATA
+----------------------
+1. Upload myapps.xlsx ke Google Drive
+2. Buka sebagai Google Sheets
+3. Salin Spreadsheet ID dari URL
+
+LANGKAH 2: BUAT PROJEK APPS SCRIPT
+------------------------------------
+1. Buka https://script.google.com → New project → Namakan "MyApps"
+2. Salin semua fail dari folder MyApps/ ke editor
+
+LANGKAH 3: SETUP
+----------------
+Jalankan fungsi berikut dalam editor:
+
+  SETUP_MYAPPS('SPREADSHEET_ID_ANDA')
+  PROMOTE_ADMIN_BY_EMAIL('anda@keda.gov.my')
+
+LANGKAH 4: DEPLOY WEB APP (PENTING!)
+-------------------------------------
+Deploy → New deployment → Web app
+
+  Execute as:     User accessing the app    ← WAJIB untuk Google SSO
+  Who has access: Anyone within [KEDA]       ← staf organisasi sahaja
+
+Salin URL /exec yang dijana.
+
+LANGKAH 5: SET URL
+------------------
+  SET_WEBAPP_URL('https://script.google.com/macros/s/.../exec')
+
+LOG MASUK
+---------
+- Tiada form login manual — guna Google SSO
+- Emel @keda.gov.my ATAU emel peribadi (Gmail/Yahoo) dibenarkan
+- SYARAT: emel Google mesti wujud dalam sheet Users (kolum emel)
+- Akaun mesti aktif (aktif=1, id_status_staf=1)
+
+KONFIGURASI DOMAIN (opsyenal)
+-----------------------------
+Dalam Config.gs:
+  ALLOWED_EMAIL_DOMAIN = ''   ← lalai: semua emel berdaftar dalam sheet
+
+Set 'keda.gov.my' jika mahu hadkan domain organisasi sahaja.
+
+LOG KELUAR
+----------
+Klik "Log Keluar Google" → buka halaman log keluar Google.
+
+NOTA DEPLOY SEMULA
+------------------
+Selepas ubah kod, buat "New version" dalam Manage deployments
+atau edit deployment sedia ada dan pilih versi terbaru.
+
+================================================================================

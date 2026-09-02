@@ -1,0 +1,13 @@
+MYAPPS KEDA — STATUS
+====================
+
+URL RASMI:
+  https://www.keda.gov.my/myapps/
+  https://keda.gov.my/myapps/
+
+SERVER (WinSCP):
+  /var/www/html/keda2026/myapps/
+  Fail: index.html, .htaccess
+
+Apps Script:
+  https://script.google.com/a/macros/keda.gov.my/s/AKfycbxpDPSF8z4q6ZJjtniCPlOVR_5HhOnR1gBz_LtQsNhT2slAwAYVND8TZI42AJcHV6y0Og/exec

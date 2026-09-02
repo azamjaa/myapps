@@ -1,0 +1,20 @@
+# Dependencies
+tools/node_modules/
+node_modules/
+
+# Secrets & local config
+.env
+.env.*
+.clasprc.json
+
+# Data sensitif (staf KEDA)
+*.xlsx
+*.csv
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Firebase cache
+.firebase/

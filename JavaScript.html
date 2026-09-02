@@ -1,0 +1,539 @@
+<script>
+var state = {
+  user: null,
+  page: 'apps',
+  appsFilter: { search: '', kategori: 0 },
+  staffFilter: { search: '', bahagian: 0 },
+  chartInstance: null,
+  sessionToken: ''
+};
+
+var SESSION_KEY = 'myapps_session';
+
+function getSessionToken() {
+  if (state.sessionToken) return state.sessionToken;
+  try { return sessionStorage.getItem(SESSION_KEY) || ''; } catch (e) { return ''; }
+}
+
+function setSessionToken(token) {
+  state.sessionToken = token || '';
+  try {
+    if (token) sessionStorage.setItem(SESSION_KEY, token);
+    else sessionStorage.removeItem(SESSION_KEY);
+  } catch (e) {}
+}
+
+function run(fnName, args) {
+  var token = getSessionToken();
+  var skipToken = fnName === 'apiLoginWithGoogle' || fnName === 'apiGetAuthConfig' || fnName === 'apiPing' || fnName === 'apiGetMe';
+  var callArgs = skipToken ? (args || []) : [token].concat(args || []);
+  return new Promise(function (resolve, reject) {
+    var done = false;
+    var timer = setTimeout(function () {
+      if (done) return;
+      done = true;
+      reject(new Error('Server tidak respons. Sila refresh halaman — jika Google minta kebenaran, klik Allow.'));
+    }, 45000);
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .withFailureHandler(function (err) {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        var msg = (err && err.message) ? err.message : String(err || 'Ralat server');
+        reject(new Error(msg));
+      })
+      [fnName].apply(null, callArgs);
+  });
+}
+var PAGE_TITLES = {
+  apps: 'Direktori Aplikasi',
+  mystaf: 'MyStaf',
+  mydashboard: 'MyDashboard',
+  birthday: 'Hari Lahir Bulan Ini',
+  'admin-apps': 'Urus Aplikasi',
+  'admin-users': 'Urus Pengguna'
+};
+
+function $(id) { return document.getElementById(id); }
+
+function show(el, on) {
+  if (!el) return;
+  el.classList.toggle('hidden', !on);
+}
+
+function setAlert(id, msg, type) {
+  var el = $(id);
+  if (!el) return;
+  if (!msg) { el.className = 'hidden'; el.innerHTML = ''; return; }
+  el.className = 'alert alert-' + (type || 'danger');
+  el.innerHTML = msg;
+}
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function togglePass(id) { /* tidak digunakan — Google SSO */ }
+
+function badgeKat(id, name) {
+  var cls = id === 1 ? 'badge-orange' : id === 2 ? 'badge-red' : 'badge-purple';
+  return '<span class="badge ' + cls + '">' + esc(name) + '</span>';
+}
+
+function downloadCsv(filename, csv) {
+  var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ── Bootstrap (Google SSO automatik) ── */
+async function bootstrap() {
+  showAuthGate(true);
+  setAuthAlert('Memuatkan akaun Google anda...', 'info');
+  show($('btnRetryAuth'), false);
+  try {
+    var ping = await run('apiPing', []);
+    if (!ping || !ping.success) throw new Error((ping && ping.message) || 'Server tidak respons.');
+    var res = await run('apiGetMe', []);
+    if (!res || !res.success) throw new Error((res && res.message) || 'Gagal mengesahkan akaun.');
+    state.user = res.data.user;
+    showAuthGate(false);
+    showApp();
+    navigate(window.INITIAL_PAGE || state.page || 'apps');
+  } catch (e) {
+    var msg = (e && e.message) ? e.message : String(e || 'Ralat tidak diketahui');
+    setAuthAlert(msg, 'danger');
+    show($('btnRetryAuth'), true);
+  }
+}
+
+function showAuthGate(on) {
+  show($('viewAuthGate'), on);
+  show($('viewApp'), false);
+  show($('chatFab'), false);
+}
+
+function setAuthAlert(msg, type) {
+  var el = $('authAlert');
+  if (!el) return;
+  el.className = 'alert alert-' + (type || 'info');
+  el.textContent = msg;
+}
+
+function showApp() {
+  show($('viewAuthGate'), false);
+  show($('viewApp'), true);
+  show($('chatFab'), true);
+  $('userChip').innerHTML = 'Selamat datang,<br><strong>' + esc(state.user.nama) + '</strong><br><small>' + esc(state.user.emel) + '</small>';
+  show($('navAdmin'), !!state.user.isAdmin);
+  show($('navUsers'), !!state.user.isAdmin);
+}
+
+/* ── Auth ── */
+async function doLogout() {
+  try { await run('apiLogout', []); } catch (e) {}
+  setSessionToken('');
+  state.user = null;
+  showAuthGate(true);
+  setAuthAlert('Sila log masuk semula dengan akaun Google berdaftar.', 'info');
+  show($('btnRetryAuth'), true);
+}
+
+/* ── Navigation ── */
+function navigate(page) {
+  state.page = page;
+  $('pageTitle').textContent = PAGE_TITLES[page] || page;
+  document.querySelectorAll('.nav-list a').forEach(function (a) {
+    a.classList.toggle('active', a.getAttribute('data-page') === page);
+  });
+  $('topbarActions').innerHTML = '';
+  if (page === 'apps') loadApps();
+  else if (page === 'mystaf') loadStaff();
+  else if (page === 'mydashboard') loadDashboard();
+  else if (page === 'birthday') loadBirthdays();
+  else if (page === 'admin-apps') loadAdminApps();
+  else if (page === 'admin-users') loadAdminUsers();
+}
+
+function openAppUrl(app) {
+  var url = app.url || '';
+  if (!url) return;
+  if (url.indexOf('#page=') === 0) {
+    navigate(url.replace('#page=', ''));
+    return;
+  }
+  if (url.indexOf('http') === 0) {
+    window.open(url, '_blank');
+    return;
+  }
+  window.open(url, '_blank');
+}
+
+/* ── Apps Directory ── */
+async function loadApps() {
+  $('pageContent').innerHTML = '<div class="empty-state">Memuatkan...</div>';
+  try {
+    var res = await run('apiGetAppsDashboard', [state.appsFilter]);
+    if (!res.success) throw new Error(res.message);
+    var d = res.data;
+    var html = '';
+
+    html += '<div class="stats-row">';
+    html += statCard(d.stats.semua, 'Semua Aplikasi', '');
+    html += statCard(d.stats.dalaman, 'Dalaman', 'orange');
+    html += statCard(d.stats.luaran, 'Luaran', 'red');
+    html += statCard(d.stats.gunasama, 'Gunasama', 'purple');
+    html += statCard(d.stats.sso, 'SSO Ready', 'blue');
+    html += '</div>';
+
+    html += '<div class="toolbar">';
+    html += '<input class="search-box" placeholder="Cari aplikasi..." value="' + esc(state.appsFilter.search) + '" oninput="debounceAppsSearch(this.value)">';
+    html += '<div class="filter-chips">';
+    html += chipBtn(0, 'Semua', state.appsFilter.kategori);
+    html += chipBtn(1, 'Dalaman', state.appsFilter.kategori);
+    html += chipBtn(2, 'Luaran', state.appsFilter.kategori);
+    html += chipBtn(3, 'Gunasama', state.appsFilter.kategori);
+    html += '</div></div>';
+
+    if (!d.apps.length) {
+      html += '<div class="empty-state">Tiada aplikasi dijumpai.</div>';
+    } else {
+      html += '<div class="app-grid">';
+      d.apps.forEach(function (a) {
+        html += '<div class="app-card" style="border-top-color:' + esc(a.warna_bg) + '" onclick=\'openAppById(' + JSON.stringify(a).replace(/'/g, '&#39;') + ')\'>';
+        html += '<div class="cat">' + badgeKat(a.id_kategori, a.nama_kategori);
+        if (a.sso_comply) html += ' <span class="badge badge-green">SSO</span>';
+        html += '</div>';
+        html += '<h3>' + esc(a.nama_aplikasi) + '</h3>';
+        html += '<p>' + esc(a.keterangan) + '</p>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    $('pageContent').innerHTML = html;
+  } catch (e) {
+    $('pageContent').innerHTML = '<div class="alert alert-danger">' + esc(e.message) + '</div>';
+  }
+}
+
+var _appsTimer;
+function debounceAppsSearch(v) {
+  clearTimeout(_appsTimer);
+  _appsTimer = setTimeout(function () { state.appsFilter.search = v; loadApps(); }, 300);
+}
+
+function filterAppsKat(k) {
+  state.appsFilter.kategori = k;
+  loadApps();
+}
+
+function chipBtn(k, label, active) {
+  return '<span class="chip' + (active === k ? ' active' : '') + '" onclick="filterAppsKat(' + k + ')">' + label + '</span>';
+}
+
+function statCard(n, label, cls) {
+  return '<div class="stat-card ' + (cls || '') + '"><div class="num">' + n + '</div><div class="lbl">' + label + '</div></div>';
+}
+
+function openAppById(app) { openAppUrl(app); }
+
+/* ── MyStaf ── */
+async function loadStaff() {
+  $('pageContent').innerHTML = '<div class="empty-state">Memuatkan...</div>';
+  try {
+    var res = await run('apiGetStaffList', [state.staffFilter]);
+    if (!res.success) throw new Error(res.message);
+    var d = res.data;
+    var html = '<div class="toolbar"><input class="search-box" placeholder="Cari staf..." oninput="debounceStaffSearch(this.value)">';
+    html += '<span style="font-size:13px;color:#6b7280">' + d.total + ' staf aktif</span></div>';
+
+    if (!d.staff.length) {
+      html += '<div class="empty-state">Tiada staf dijumpai.</div>';
+    } else {
+      html += '<div class="staff-grid">';
+      d.staff.forEach(function (s) {
+        var initial = (s.nama || '?').charAt(0);
+        html += '<div class="staff-card">';
+        html += '<div class="staff-avatar">' + esc(initial) + '</div>';
+        html += '<h4>' + esc(s.nama) + '</h4>';
+        html += '<p>' + esc(s.jawatan) + '</p>';
+        html += '<p>' + esc(s.bahagian) + '</p>';
+        html += '<p style="margin-top:4px">' + esc(s.emel) + '</p>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    $('pageContent').innerHTML = html;
+  } catch (e) {
+    $('pageContent').innerHTML = '<div class="alert alert-danger">' + esc(e.message) + '</div>';
+  }
+}
+
+var _staffTimer;
+function debounceStaffSearch(v) {
+  clearTimeout(_staffTimer);
+  _staffTimer = setTimeout(function () { state.staffFilter.search = v; loadStaff(); }, 300);
+}
+
+/* ── Dashboard ── */
+async function loadDashboard() {
+  $('pageContent').innerHTML = '<div class="empty-state">Memuatkan dashboard...</div>';
+  try {
+    var res = await run('apiGetDashboardSummary', [{}]);
+    if (!res.success) throw new Error(res.message);
+    var d = res.data;
+    var html = '';
+
+    html += '<div class="stats-row">';
+    html += statCard(d.total, 'Jumlah Projek', 'blue');
+    Object.keys(d.byStatus || {}).forEach(function (k) {
+      html += statCard(d.byStatus[k], k, '');
+    });
+    html += '</div>';
+
+    html += '<div class="toolbar"><input class="search-box" id="dashSearch" placeholder="Cari projek pencapaian..." onkeydown="if(event.key===\'Enter\')searchPencapaian()"><button class="btn-outline" onclick="searchPencapaian()">Cari</button></div>';
+    html += '<div id="dashSearchResults"></div>';
+
+    html += '<div class="chart-row">';
+    html += '<div class="chart-box"><h3>Mengikut Kategori (Top 10)</h3><canvas id="chartKat" height="200"></canvas></div>';
+    html += '<div class="chart-box"><h3>Mengikut Daerah (Top 15)</h3><canvas id="chartDae" height="200"></canvas></div>';
+    html += '</div>';
+
+    html += '<div class="panel"><h3 style="margin:0 0 12px">Projek Terkini</h3>';
+    html += '<table class="data-table"><thead><tr><th>Kategori</th><th>Nama</th><th>Daerah</th><th>Status</th></tr></thead><tbody>';
+    (d.recent || []).forEach(function (r) {
+      html += '<tr><td>' + esc(r.kategori) + '</td><td>' + esc(r.nama) + '</td><td>' + esc(r.daerah) + '</td><td>' + esc(r.status) + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    $('pageContent').innerHTML = html;
+
+    if (state.chartInstance) { state.chartInstance.destroy(); state.chartInstance = null; }
+    renderBarChart('chartKat', d.topKategori);
+    renderBarChart('chartDae', d.topDaerah);
+  } catch (e) {
+    $('pageContent').innerHTML = '<div class="alert alert-danger">' + esc(e.message) + '</div>';
+  }
+}
+
+function renderBarChart(canvasId, data) {
+  var ctx = $(canvasId);
+  if (!ctx || !data || !data.length) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(function (d) { return d.name.length > 30 ? d.name.substr(0, 30) + '...' : d.name; }),
+      datasets: [{ label: 'Jumlah', data: data.map(function (d) { return d.total; }), backgroundColor: '#F39C12' }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 10 } } } } }
+  });
+}
+
+async function searchPencapaian() {
+  var q = ($('dashSearch') || {}).value || '';
+  var el = $('dashSearchResults');
+  if (!el || !q) return;
+  el.innerHTML = '<div class="empty-state">Mencari...</div>';
+  try {
+    var res = await run('apiSearchPencapaian', [q, 30]);
+    if (!res.success) throw new Error(res.message);
+    if (!res.data.results.length) { el.innerHTML = '<div class="empty-state">Tiada hasil.</div>'; return; }
+    var html = '<div class="panel" style="margin-bottom:16px"><h3 style="margin:0 0 12px">Hasil Carian (' + res.data.results.length + ')</h3>';
+    html += '<table class="data-table"><thead><tr><th>Kategori</th><th>Nama</th><th>Daerah</th><th>Status</th></tr></thead><tbody>';
+    res.data.results.forEach(function (r) {
+      html += '<tr><td>' + esc(r.kategori) + '</td><td>' + esc(r.nama) + '</td><td>' + esc(r.daerah) + '</td><td>' + esc(r.status) + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = '<div class="alert alert-danger">' + esc(e.message) + '</div>';
+  }
+}
+
+/* ── Birthdays ── */
+async function loadBirthdays() {
+  $('pageContent').innerHTML = '<div class="empty-state">Memuatkan...</div>';
+  try {
+    var res = await run('apiGetBirthdays', []);
+    if (!res.success) throw new Error(res.message);
+    var months = ['','Jan','Feb','Mac','Apr','Mei','Jun','Jul','Ogos','Sep','Okt','Nov','Dis'];
+    var html = '<div class="panel"><h3 style="margin:0 0 16px">Hari Lahir Bulan ' + months[res.data.month] + ' (' + res.data.birthdays.length + ')</h3>';
+    if (!res.data.birthdays.length) {
+      html += '<div class="empty-state">Tiada hari lahir bulan ini.</div>';
+    } else {
+      html += '<div class="staff-grid">';
+      res.data.birthdays.forEach(function (b) {
+        html += '<div class="staff-card"><div class="staff-avatar">' + esc(b.nama.charAt(0)) + '</div>';
+        html += '<h4>' + esc(b.nama) + '</h4><p>' + b.hari + ' ' + months[b.bulan] + '</p>';
+        html += '<p>' + esc(b.bahagian) + '</p></div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    $('pageContent').innerHTML = html;
+  } catch (e) {
+    $('pageContent').innerHTML = '<div class="alert alert-danger">' + esc(e.message) + '</div>';
+  }
+}
+
+/* ── Admin Apps ── */
+async function loadAdminApps() {
+  $('topbarActions').innerHTML = '<button class="btn-keda btn-sm" style="width:auto" onclick="showAppModal()">+ Tambah Aplikasi</button>';
+  $('pageContent').innerHTML = '<div class="empty-state">Memuatkan...</div>';
+  try {
+    var res = await run('apiGetAppsDashboard', [{}]);
+    if (!res.success) throw new Error(res.message);
+    var html = '<table class="data-table"><thead><tr><th>Nama</th><th>Kategori</th><th>URL</th><th>SSO</th><th></th></tr></thead><tbody>';
+    res.data.apps.forEach(function (a) {
+      html += '<tr><td>' + esc(a.nama_aplikasi) + '</td><td>' + esc(a.nama_kategori) + '</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">' + esc(a.url) + '</td>';
+      html += '<td>' + (a.sso_comply ? 'Ya' : 'Tidak') + '</td>';
+      html += '<td><button class="btn-outline btn-sm" onclick=\'showAppModal(' + JSON.stringify(a).replace(/'/g, '&#39;') + ')\'>Edit</button> ';
+      html += '<button class="btn-danger btn-sm" onclick="deleteApp(' + a.id_aplikasi + ')">Padam</button></td></tr>';
+    });
+    html += '</tbody></table>';
+    $('pageContent').innerHTML = html;
+  } catch (e) {
+    $('pageContent').innerHTML = '<div class="alert alert-danger">' + esc(e.message) + '</div>';
+  }
+}
+
+function showAppModal(data) {
+  data = data || {};
+  $('modalBody').innerHTML =
+    '<h3>' + (data.id_aplikasi ? 'Edit' : 'Tambah') + ' Aplikasi</h3>' +
+    '<label class="form-label">NAMA APLIKASI</label><input class="form-control" id="mAppNama" value="' + esc(data.nama_aplikasi || '') + '">' +
+    '<label class="form-label" style="margin-top:10px">KATEGORI</label><select class="form-control" id="mAppKat"><option value="1"' + (data.id_kategori === 1 ? ' selected' : '') + '>Dalaman</option><option value="2"' + (data.id_kategori === 2 ? ' selected' : '') + '>Luaran</option><option value="3"' + (data.id_kategori === 3 ? ' selected' : '') + '>Gunasama</option></select>' +
+    '<label class="form-label" style="margin-top:10px">KETERANGAN</label><input class="form-control" id="mAppKet" value="' + esc(data.keterangan || '') + '">' +
+    '<label class="form-label" style="margin-top:10px">URL</label><input class="form-control" id="mAppUrl" value="' + esc(data.url || '') + '">' +
+    '<label style="margin-top:10px;display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" id="mAppSso"' + (data.sso_comply ? ' checked' : '') + '> SSO Comply</label>' +
+    '<div class="modal-actions"><button class="btn-outline" onclick="closeModal()">Batal</button><button class="btn-keda btn-sm" style="width:auto" onclick="saveApp(' + (data.id_aplikasi || 0) + ')">Simpan</button></div>';
+  show($('modalOverlay'), true);
+}
+
+async function saveApp(id) {
+  try {
+    var res = await run('apiSaveApp', [{
+      id_aplikasi: id || undefined,
+      nama_aplikasi: $('mAppNama').value,
+      id_kategori: parseInt($('mAppKat').value, 10),
+      keterangan: $('mAppKet').value,
+      url: $('mAppUrl').value,
+      sso_comply: $('mAppSso').checked
+    }]);
+    if (!res.success) throw new Error(res.message);
+    closeModal();
+    loadAdminApps();
+  } catch (e) { alert(e.message); }
+}
+
+async function deleteApp(id) {
+  if (!confirm('Nyahaktifkan aplikasi ini?')) return;
+  try {
+    var res = await run('apiDeleteApp', [id]);
+    if (!res.success) throw new Error(res.message);
+    loadAdminApps();
+  } catch (e) { alert(e.message); }
+}
+
+/* ── Admin Users ── */
+async function loadAdminUsers() {
+  $('topbarActions').innerHTML = '<button class="btn-keda btn-sm" style="width:auto" onclick="showUserModal()">+ Tambah Pengguna</button>';
+  $('pageContent').innerHTML = '<div class="empty-state">Memuatkan...</div>';
+  try {
+    var res = await run('apiGetUsers', [{}]);
+    if (!res.success) throw new Error(res.message);
+    var html = '<div class="toolbar"><input class="search-box" placeholder="Cari pengguna..." oninput="debounceUserSearch(this.value)"></div>';
+    html += '<table class="data-table" id="usersTable"><thead><tr><th>Nama</th><th>No. KP</th><th>Emel</th><th>Role</th><th>Aktif</th><th></th></tr></thead><tbody>';
+    res.data.users.forEach(function (u) {
+      html += '<tr data-search="' + esc((u.nama + u.no_kp + u.emel).toLowerCase()) + '">';
+      html += '<td>' + esc(u.nama) + '</td><td>' + esc(u.no_kp) + '</td><td>' + esc(u.emel) + '</td>';
+      html += '<td>' + esc(u.role) + '</td><td>' + (u.aktif !== false && u.id_status_staf === 1 ? 'Ya' : 'Tidak') + '</td>';
+      html += '<td><button class="btn-outline btn-sm" onclick=\'showUserModal(' + JSON.stringify(u).replace(/'/g, '&#39;') + ')\'>Edit</button></td></tr>';
+    });
+    html += '</tbody></table>';
+    $('pageContent').innerHTML = html;
+  } catch (e) {
+    $('pageContent').innerHTML = '<div class="alert alert-danger">' + esc(e.message) + '</div>';
+  }
+}
+
+var _userTimer;
+function debounceUserSearch(v) {
+  clearTimeout(_userTimer);
+  _userTimer = setTimeout(function () {
+    v = v.toLowerCase();
+    document.querySelectorAll('#usersTable tbody tr').forEach(function (tr) {
+      tr.style.display = !v || (tr.getAttribute('data-search') || '').indexOf(v) >= 0 ? '' : 'none';
+    });
+  }, 200);
+}
+
+function showUserModal(data) {
+  data = data || {};
+  $('modalBody').innerHTML =
+    '<h3>' + (data.id_user ? 'Edit' : 'Tambah') + ' Pengguna</h3>' +
+    '<label class="form-label">NO. KP</label><input class="form-control" id="mUserKp" value="' + esc(data.no_kp || '') + '">' +
+    '<label class="form-label" style="margin-top:10px">NAMA</label><input class="form-control" id="mUserNama" value="' + esc(data.nama || '') + '">' +
+    '<label class="form-label" style="margin-top:10px">EMEL</label><input class="form-control" id="mUserEmel" value="' + esc(data.emel || '') + '">' +
+    '<label class="form-label" style="margin-top:10px">ROLE</label><select class="form-control" id="mUserRole"><option value="user_biasa"' + (data.role === 'user_biasa' ? ' selected' : '') + '>User Biasa</option><option value="admin"' + (data.role === 'admin' ? ' selected' : '') + '>Admin</option><option value="super_admin"' + (data.role === 'super_admin' ? ' selected' : '') + '>Super Admin</option></select>' +
+    '<label style="margin-top:10px;display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" id="mUserAktif"' + (data.aktif !== false ? ' checked' : '') + '> Aktif</label>' +
+    '<div class="modal-actions"><button class="btn-outline" onclick="closeModal()">Batal</button><button class="btn-keda btn-sm" style="width:auto" onclick="saveUser(' + (data.id_user || 0) + ')">Simpan</button></div>';
+  show($('modalOverlay'), true);
+}
+
+async function saveUser(id) {
+  try {
+    var res = await run('apiSaveUser', [{
+      id_user: id || undefined,
+      no_kp: $('mUserKp').value,
+      nama: $('mUserNama').value,
+      emel: $('mUserEmel').value,
+      role: $('mUserRole').value,
+      aktif: $('mUserAktif').checked
+    }]);
+    if (!res.success) throw new Error(res.message);
+    closeModal();
+    loadAdminUsers();
+  } catch (e) { alert(e.message); }
+}
+
+/* ── Modal ── */
+function closeModal() { show($('modalOverlay'), false); }
+
+/* ── Chatbot ── */
+function toggleChat() {
+  var panel = $('chatPanel');
+  show(panel, panel.classList.contains('hidden'));
+}
+
+async function sendChat() {
+  var input = $('chatInput');
+  var msg = (input.value || '').trim();
+  if (!msg) return;
+  input.value = '';
+  var box = $('chatMessages');
+  box.innerHTML += '<div class="chat-msg user">' + esc(msg) + '</div>';
+  box.scrollTop = box.scrollHeight;
+  try {
+    var res = await run('apiChatbot', [msg]);
+    var reply = res.success ? res.data.reply : (res.message || 'Ralat.');
+    box.innerHTML += '<div class="chat-msg bot">' + reply + '</div>';
+    box.scrollTop = box.scrollHeight;
+  } catch (e) {
+    box.innerHTML += '<div class="chat-msg bot">Maaf, ralat berlaku.</div>';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', bootstrap);
+</script>

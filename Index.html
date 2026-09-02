@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><?= appName ?></title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style><?!= include('Styles'); ?></style>
+</head>
+<body>
+
+  <!-- AUTH GATE (Google SSO) -->
+  <div id="viewAuthGate" class="login-wrap">
+    <div class="login-card">
+      <div class="brand-mark">K</div>
+      <div style="text-align:center;margin-bottom:20px">
+        <h2 style="margin:0;font-size:24px"><?= appName ?></h2>
+        <p style="margin:4px 0 0;color:#6b7280;font-size:13px"><?= appTagline ?></p>
+      </div>
+      <div id="authAlert" class="alert alert-info" style="text-align:center">
+        Memuatkan akaun Google anda...
+      </div>
+      <div style="text-align:center;margin-top:16px">
+        <img src="https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png" alt="Google" width="32" style="opacity:.7">
+        <p style="font-size:12px;color:#9ca3af;margin-top:8px">Log masuk dengan akaun Google berdaftar<br>(@keda.gov.my atau Gmail peribadi dalam rekod MyApps)</p>
+      </div>
+      <button class="btn-keda hidden" style="margin-top:16px" id="btnRetryAuth" onclick="bootstrap()">CUBA SEMULA</button>
+      <div style="text-align:center;margin-top:18px">
+        <small style="color:#9ca3af;font-size:10px">&copy; Lembaga Kemajuan Wilayah Kedah</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div id="viewApp" class="hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <h1><?= appName ?></h1>
+        <p><?= appTagline ?></p>
+      </div>
+      <ul class="nav-list" id="navList">
+        <li><a href="#" data-page="apps" class="active" onclick="navigate('apps');return false">&#128194; Direktori Aplikasi</a></li>
+        <li><a href="#" data-page="mystaf" onclick="navigate('mystaf');return false">&#128101; MyStaf</a></li>
+        <li><a href="#" data-page="mydashboard" onclick="navigate('mydashboard');return false">&#128202; MyDashboard</a></li>
+        <li><a href="#" data-page="birthday" onclick="navigate('birthday');return false">&#127874; Hari Lahir</a></li>
+        <li id="navAdmin" class="hidden"><a href="#" data-page="admin-apps" onclick="navigate('admin-apps');return false">&#9881; Urus Aplikasi</a></li>
+        <li id="navUsers" class="hidden"><a href="#" data-page="admin-users" onclick="navigate('admin-users');return false">&#128100; Urus Pengguna</a></li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="user-chip" id="userChip"></div>
+        <button class="btn-outline btn-sm" style="margin-top:8px;width:100%;color:#fff;border-color:rgba(255,255,255,.3)" onclick="doLogout()">Log Keluar Google</button>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="topbar">
+        <h2 id="pageTitle">Direktori Aplikasi</h2>
+        <div id="topbarActions"></div>
+      </div>
+      <div class="content" id="pageContent"></div>
+    </div>
+  </div>
+
+  <!-- Chatbot -->
+  <button class="chat-fab hidden" id="chatFab" onclick="toggleChat()">&#128172;</button>
+  <div class="chat-panel hidden" id="chatPanel">
+    <div class="chat-header">Pembantu Maya KEDA</div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg bot">Assalamualaikum! Saya Pembantu Maya KEDA. Apa yang boleh saya bantu?</div>
+    </div>
+    <div class="chat-input-row">
+      <input id="chatInput" placeholder="Taip soalan..." onkeydown="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()">&#10148;</button>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay hidden" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal" id="modalBody"></div>
+  </div>
+
+  <script>
+    window.INITIAL_PAGE = '<?= initialPage ?>';
+  </script>
+  <?!= include('JavaScript'); ?>
+</body>
+</html>

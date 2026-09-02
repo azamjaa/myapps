@@ -1,0 +1,7 @@
+tools/**
+node_modules/**
+hosting/**
+server/**
+DEPLOY.txt
+MULA-DARI-SIFAR.txt
+.clasp.json
