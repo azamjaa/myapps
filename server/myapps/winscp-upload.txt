@@ -1,0 +1,12 @@
+option batch abort
+option confirm off
+open "keda.gov.my"
+cd /var/www/html/keda2026/myapps
+put "d:\myapps\server\myapps\index.html" ./index.html
+mkdir assets
+cd assets
+put "d:\myapps\server\myapps\assets\logo-keda.png" ./logo-keda.png
+cd ..
+ls
+close
+exit

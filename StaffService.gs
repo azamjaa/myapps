@@ -17,7 +17,17 @@ function apiGetStaffList(sessionToken, filters) {
       .filter(function (u) {
         return toInt_(u.aktif, 1) === 1 && toInt_(u.id_status_staf, 1) === 1;
       })
-      .map(enrichStaff_)
+      .map(function (u) {
+        return {
+          id_user: toInt_(u.id_user),
+          no_staf: String(u.no_staf || ''),
+          nama: String(u.nama || ''),
+          emel: String(u.emel || ''),
+          jawatan: lookupName_('jawatan', u.id_jawatan),
+          bahagian: lookupName_('bahagian', u.id_bahagian),
+          id_bahagian: toInt_(u.id_bahagian)
+        };
+      })
       .filter(function (u) {
         if (bahagian && u.id_bahagian !== bahagian) return false;
         if (!search) return true;

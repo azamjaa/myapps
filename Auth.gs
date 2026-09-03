@@ -1,7 +1,7 @@
 /**
  * Autentikasi Google SSO
- * Deploy: Execute as = Me, Who has access = Anyone (Google account)
- * Emel disahkan via Google ID token; akses hanya jika wujud dalam sheet Users.
+ * Deploy: Execute as = Me (USER_DEPLOYING), Who has access = Anyone / domain
+ * Emel disahkan via Google ID token + session; sheet dibaca sebagai deployer.
  */
 
 var PROP_GOOGLE_CLIENT_ID = 'GOOGLE_OAUTH_CLIENT_ID';
@@ -172,9 +172,7 @@ function getEmailFromSession_(sessionToken) {
 function getGoogleEmailLegacy_() {
   var email = '';
   try { email = Session.getActiveUser().getEmail(); } catch (e) {}
-  if (!email) {
-    try { email = Session.getEffectiveUser().getEmail(); } catch (e2) {}
-  }
+  // Jangan guna EffectiveUser — bila Execute as: Me ia sentiasa pemilik script
   return lower_(email);
 }
 
@@ -257,7 +255,11 @@ function apiGetMe(sessionToken) {
     var s = requireAuth_(sessionToken);
     var user = findById_(SHEETS.USERS, 'id_user', s.user_id);
     if (!user) return fail_('Pengguna tidak dijumpai.');
-    return ok_({ user: publicUser_(user), googleEmail: s.emel, sessionToken: sessionToken });
+    var token = sessionToken || '';
+    if (!getEmailFromSession_(token)) {
+      token = createSession_(s.emel);
+    }
+    return ok_({ user: publicUser_(user), googleEmail: s.emel, sessionToken: token });
   } catch (e) {
     return fail_(e.message);
   }

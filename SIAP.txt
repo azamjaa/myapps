@@ -1,13 +1,21 @@
 MYAPPS KEDA — STATUS
 ====================
 
-URL RASMI:
+URL RASMI (guna ini):
   https://www.keda.gov.my/myapps/
+
+URL alternatif (PC pejabat sahaja — mobile mungkin gagal):
   https://keda.gov.my/myapps/
+  → Sebab: keda.gov.my dan www.keda.gov.my arah server/IP berbeza
+
+PENYELESAIAN IT (supaya kedua-dua URL jalan):
+  1. Samakan DNS A record keda.gov.my dengan www.keda.gov.my
+  2. ATAU tambah redirect Apache — rujuk htaccess-induk.txt
 
 SERVER (WinSCP):
   /var/www/html/keda2026/myapps/
   Fail: index.html, .htaccess
+  Induk: /var/www/html/keda2026/.htaccess (tambah rule dari htaccess-induk.txt)
 
 Apps Script:
-  https://script.google.com/a/macros/keda.gov.my/s/AKfycbxpDPSF8z4q6ZJjtniCPlOVR_5HhOnR1gBz_LtQsNhT2slAwAYVND8TZI42AJcHV6y0Og/exec
+  https://script.google.com/macros/s/AKfycbxpDPSF8z4q6ZJjtniCPlOVR_5HhOnR1gBz_LtQsNhT2slAwAYVND8TZI42AJcHV6y0Og/exec

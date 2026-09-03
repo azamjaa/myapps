@@ -11,7 +11,7 @@ function enrichApp_(a) {
     nama_kategori: KATEGORI[idKat] || lookupName_('kategori', idKat) || '',
     keterangan: String(a.keterangan || ''),
     url: String(a.url || ''),
-    warna_bg: String(a.warna_bg || KATEGORI_WARNA[idKat] || '#007bff'),
+    warna_bg: KATEGORI_WARNA[idKat] || String(a.warna_bg || '#2F6FED'),
     sso_comply: toInt_(a.sso_comply, 0),
     status: toInt_(a.status, 1)
   };
@@ -23,6 +23,7 @@ function apiGetAppsDashboard(sessionToken, filters) {
     filters = filters || {};
     var search = String(filters.search || '').toLowerCase();
     var kategori = filters.kategori ? toInt_(filters.kategori) : 0;
+    var ssoOnly = !!filters.sso;
 
     var all = sheetToObjects_(SHEETS.APLIKASI)
       .filter(function (a) { return toInt_(a.status, 1) === 1; })
@@ -46,6 +47,7 @@ function apiGetAppsDashboard(sessionToken, filters) {
 
     var list = all.filter(function (a) {
       if (kategori && a.id_kategori !== kategori) return false;
+      if (ssoOnly && a.sso_comply !== 1) return false;
       if (!search) return true;
       return (
         a.nama_aplikasi.toLowerCase().indexOf(search) >= 0 ||

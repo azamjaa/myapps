@@ -1,0 +1,29 @@
+# =============================================================================
+# MyApps KEDA — TAMBAH ke /var/www/html/keda2026/.htaccess
+# Letak DI ATAS sekali, SEBELUM "# BEGIN WordPress" atau rule CMS lain
+# =============================================================================
+
+# 1. Redirect keda.gov.my → www.keda.gov.my (path /myapps)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP_HOST} ^keda\.gov\.my$ [NC]
+    RewriteRule ^myapps/?(.*)$ https://www.keda.gov.my/myapps/$1 [R=301,L]
+</IfModule>
+
+# 2. Elak CMS/WordPress tangkap /myapps
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    RewriteRule ^myapps/?$ /myapps/index.html [R=302,L]
+    RewriteRule ^myapps/index\.html$ - [L]
+    RewriteRule ^myapps/.+ - [L]
+</IfModule>
+
+# =============================================================================
+# NOTA IT: Jika keda.gov.my (tanpa www) guna IP/SERVER berbeza dari www,
+# tambah redirect yang sama pada VirtualHost non-www juga, contoh:
+#
+#   RewriteRule ^myapps/?(.*)$ https://www.keda.gov.my/myapps/$1 [R=301,L]
+#
+# Atau samakan DNS A record: keda.gov.my = www.keda.gov.my
+# =============================================================================

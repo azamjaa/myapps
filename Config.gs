@@ -9,8 +9,8 @@ var APP_TAGLINE = 'Direktori Aplikasi KEDA';
 
 /** Google Sheet ID (myapps.xlsx) */
 var DEFAULT_SPREADSHEET_ID = '1ZwQ3lDESC0sR4YLziHy2RuEvxxBf9zyzt3b_G5Xb6D0';
-/** URL portal rasmi (tanpa www — perlukan IT samakan DNS) */
-var DEFAULT_APP_URL = 'https://keda.gov.my/myapps/';
+/** URL portal rasmi — guna www (non-www arah server/IP berbeza di mobile) */
+var DEFAULT_APP_URL = 'https://www.keda.gov.my/myapps/';
 
 /** OAuth Web Client ID — salin dari GCP Credentials (Web client auto created by Apps Script) */
 var GOOGLE_OAUTH_CLIENT_ID = '';
@@ -44,8 +44,8 @@ var KATEGORI = {
 };
 
 var KATEGORI_WARNA = {
-  1: '#F39C12',
-  2: '#E74C3C',
+  1: '#2F6FED',
+  2: '#C8102E',
   3: '#6C3483'
 };
 

@@ -30,8 +30,16 @@ LANGKAH 4: DEPLOY WEB APP (PENTING!)
 -------------------------------------
 Deploy → New deployment → Web app
 
-  Execute as:     User accessing the app    ← WAJIB untuk Google SSO
-  Who has access: Anyone within [KEDA]       ← staf organisasi sahaja
+  Execute as:     Me (pemilik script)          ← elak modal kebenaran Spreadsheet
+  Who has access: Anyone within [KEDA]         ← atau Anyone jika perlu Gmail peribadi
+
+Kenapa "Me" bukan "User accessing":
+  - "User accessing" = setiap staf diminta kebenaran Spreadsheet → modal Google setiap kali
+  - "Me" = script baca sheet sebagai deployer; staf hanya log masuk Google (SSO)
+
+Elakkan label "(Unverified)" — tetapan IT (Google Workspace Admin):
+  1. GCP Console → OAuth consent screen → User type: Internal
+  2. Admin Console → Security → API controls → Trust OAuth app (Client ID MyApps)
 
 Salin URL /exec yang dijana.
 

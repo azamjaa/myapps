@@ -9,6 +9,11 @@ function apiGetDashboardSummary(sessionToken, filters) {
     var kategori = String(filters.kategori || '').trim();
     var daerah = String(filters.daerah || '').trim();
     var status = String(filters.status || '').trim();
+    var cacheKey = 'dash_sum_' + [kategori, daerah, status].join('|');
+    var cached = CacheService.getScriptCache().get(cacheKey);
+    if (cached) {
+      try { return ok_(JSON.parse(cached)); } catch (ignore) {}
+    }
 
     var rows = sheetToObjects_(SHEETS.PENCAPAIAN);
     var filtered = rows.filter(function (r) {
@@ -52,7 +57,7 @@ function apiGetDashboardSummary(sessionToken, filters) {
       };
     });
 
-    return ok_({
+    var payload = {
       total: filtered.length,
       byStatus: byStatus,
       topKategori: topKategori,
@@ -63,7 +68,11 @@ function apiGetDashboardSummary(sessionToken, filters) {
         daerahList: Object.keys(byDaerah).sort(),
         statusList: Object.keys(byStatus).sort()
       }
-    });
+    };
+    try {
+      CacheService.getScriptCache().put(cacheKey, JSON.stringify(payload), 300);
+    } catch (cacheErr) {}
+    return ok_(payload);
   } catch (e) {
     return fail_(e.message);
   }

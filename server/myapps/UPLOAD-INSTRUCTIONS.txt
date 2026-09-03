@@ -1,0 +1,31 @@
+UPLOAD LOGO / DESIGN BAHARU — WAJIB VIA WINSCP
+==============================================
+
+MASALAH: keda.gov.my/myapps masih tunjuk huruf "K" kerana
+fail index.html di SERVER belum diganti.
+
+LANGKAH (WinSCP):
+1. Buka folder server:
+   /var/www/html/keda2026/myapps/
+
+2. BACKUP dulu index.html lama (rename ke index-lama.html)
+
+3. Upload FAIL INI (ganti yang lama):
+   DARI PC:  d:\myapps\server\myapps\index.html
+   KE:       /var/www/html/keda2026/myapps/index.html
+
+   ATAU upload:
+   d:\myapps\server\myapps\UPLOAD-index.html
+   kemudian RENAME di server kepada index.html
+
+4. Logo sudah EMBED dalam index.html (tak perlu folder assets)
+
+5. Uji:
+   https://www.keda.gov.my/myapps/?v=2
+   Hard refresh Ctrl+Shift+R
+
+UJIAN TERUS APPS SCRIPT (tanpa server):
+https://script.google.com/macros/s/AKfycbxpDPSF8z4q6ZJjtniCPlOVR_5HhOnR1gBz_LtQsNhT2slAwAYVND8TZI42AJcHV6y0Og/exec
+
+Jika URL GAS nampak logo KEDA rasmi, design sudah OK —
+cuma server belum upload.
